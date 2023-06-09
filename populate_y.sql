@@ -1,4 +1,4 @@
-%%sql
+
 -- populate.sql
 
 -- Inserção de dados na tabela "customer"
