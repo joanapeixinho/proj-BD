@@ -1,0 +1,139 @@
+%%sql
+-- populate.sql
+
+DO $$
+DECLARE
+  MAX_ROWS CONSTANT integer := 1000;
+  MIN_ROWS CONSTANT integer := 10;
+BEGIN
+
+-- table "customer"
+INSERT INTO customer (cust_no, name, email, phone, address)
+SELECT
+  generate_series AS cust_no,
+  'Customer ' || generate_series AS name,
+  'customer' || generate_series || '@example.com' AS email,
+  '555-123456' AS phone,
+  'Rua ' || generate_series || ', '|| floor(random() * (9999 - 1000 + 1)) + 1000 
+         || '-'|| floor(random() * (999 - 100 + 1)) + 100 || ' Cidade ' || generate_series  AS address
+FROM generate_series(1, MAX_ROWS);
+
+-- table "orders"
+INSERT INTO orders (order_no, cust_no, date)
+SELECT
+  ROW_NUMBER() OVER (ORDER BY cust_no) AS order_no,
+  cust_no,
+  CURRENT_DATE - (random() * 365)::int AS date
+FROM generate_series(1, MAX_ROWS), customer
+ORDER BY random()
+LIMIT MAX_ROWS;
+
+-- table "pay"
+INSERT INTO pay (order_no, cust_no)
+SELECT
+  order_no,
+  cust_no
+FROM orders
+ORDER BY random()
+LIMIT FLOOR(MAX_ROWS / 2);
+
+-- table "employee"
+INSERT INTO employee (ssn, TIN, bdate, name)
+SELECT
+  'SSN' || generate_series AS ssn,
+  'TIN' || generate_series AS TIN,
+  (date_trunc('year', current_date) - interval '18 years' - random() * interval '365 days')::date AS bdate,
+  'Employee ' || generate_series AS name
+FROM generate_series(1, MAX_ROWS);
+
+-- table "process"
+INSERT INTO process (ssn, order_no)
+SELECT
+    ssn,
+    order_no
+FROM employee, pay
+ORDER BY random()
+LIMIT FLOOR(MAX_ROWS / 2);
+
+-- table "department"
+INSERT INTO department (name)
+SELECT
+  'Department ' || generate_series
+FROM generate_series(1, MIN_ROWS);
+
+-- table "workplace"
+INSERT INTO workplace (address, lat, long)
+SELECT
+  'Rua ' || generate_series || ', '|| floor(random() * (9999 - 1000 + 1)) + 1000 
+         || '-'|| floor(random() * (999 - 100 + 1)) + 100 || ' Cidade ' || generate_series  AS address,
+  generate_series AS lat,
+  generate_series AS long
+FROM generate_series(1, MIN_ROWS * 10);
+
+-- table "office"
+INSERT INTO office (address)
+SELECT
+  address
+FROM workplace
+ORDER BY random()
+LIMIT (MIN_ROWS* 10) / 2;
+
+-- table "warehouse"
+INSERT INTO warehouse (address)
+SELECT
+  address
+FROM workplace
+WHERE address NOT IN (SELECT * FROM office);
+
+-- table "works"
+INSERT INTO works (ssn, name, address)
+SELECT
+      e.ssn,
+      d.name,
+      w.address
+FROM employee AS e, department AS d, workplace as w
+ORDER BY random()
+LIMIT MAX_ROWS;
+
+-- table "product"
+INSERT INTO product (SKU, name, description, price, ean)
+SELECT
+  'SKU' || generate_series AS SKU,
+  'Product ' || generate_series AS name,
+  'Description for Product ' || generate_series AS description,
+  (random() * 1000)::numeric(10, 2) AS price,
+  generate_series AS ean
+FROM generate_series(1, MAX_ROWS);
+
+-- table "contains"
+INSERT INTO contains (order_no, SKU, qty)
+SELECT
+    order_no,
+    SKU,
+    (random() * 10 + 1)::int AS qty
+FROM orders, product
+ORDER BY random()
+LIMIT MAX_ROWS;
+
+-- table "supplier"
+INSERT INTO supplier (TIN, name, address, SKU, date)
+SELECT
+  'TIN' || ROW_NUMBER() OVER () AS TIN,
+  'Supplier ' || ROW_NUMBER() OVER () AS name,
+  'Rua ' || ROW_NUMBER() OVER () || ', '|| floor(random() * (9999 - 1000 + 1)) + 1000 
+         || '-'|| floor(random() * (999 - 100 + 1)) + 100 || ' Cidade ' || ROW_NUMBER() OVER ()  AS address,
+  SKU,
+  CURRENT_DATE - (random() * 365 * 2)::int AS date
+FROM generate_series(1, MAX_ROWS), product
+ORDER BY random()
+LIMIT MAX_ROWS;
+
+-- table "delivery"
+INSERT INTO delivery (address, TIN)
+SELECT
+  w.address,
+  TIN
+FROM warehouse w, supplier
+ORDER BY random()
+LIMIT MAX_ROWS;
+END $$;
