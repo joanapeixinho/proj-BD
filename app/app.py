@@ -18,21 +18,27 @@ from psycopg_pool import ConnectionPool
 # postgres://{user}:{password}@{hostname}:{port}/{database-name}
 DATABASE_URL = "postgres://db:db@postgres/db"
 
+# creates the flask app itself using static files from the static folder
 app = Flask(__name__, static_url_path='/static')
 
 pool = ConnectionPool(conninfo=DATABASE_URL)
 # the pool starts connecting immediately.
 
-cart_items = ['total_price', 'total_items', 'items']
+cart_items = {'total_price': 0, 'total_items':0, 'items': []}
 
+# Configure logging
 dictConfig(
     {
         "version": 1,
+
+        # errors log formats
         "formatters": {
             "default": {
                 "format": "[%(asctime)s] %(levelname)s in %(module)s:%(lineno)s - %(funcName)20s(): %(message)s",
             }
         },
+
+        # handlers define where the log is written
         "handlers": {
             "wsgi": {
                 "class": "logging.StreamHandler",
@@ -40,11 +46,16 @@ dictConfig(
                 "formatter": "default",
             }
         },
+
+        # root defines the default logging level
         "root": {"level": "INFO", "handlers": ["wsgi"]},
     }
 )
 
+# redudante? linha 22
 app = Flask(__name__)
+
+# object to log messages to
 log = app.logger
 
 
@@ -177,7 +188,7 @@ def add_to_cart():
 
     sku = request.form.get('sku')
     quantity = int(request.form.get('quantity'))
-    price = int(request.form.get('price')) * quantity
+    price = float(request.form.get('price')) * quantity
 
     
     for item in cart_items['items']:
@@ -191,7 +202,7 @@ def add_to_cart():
         cart_items['items'].append({'sku': sku, 'quantity': quantity, 'price_for_qty': price})
         
     cart_items['total_price'] += price
-    cart_items['total_quantity'] += quantity
+    cart_items['total_items'] += quantity
 
     return redirect('/orders') 
 
