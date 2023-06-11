@@ -1,48 +1,68 @@
 <!doctype html>
 <title>{% block title %}{% endblock %} - Bank </title>
- <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="static/dist/output.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.css" rel="stylesheet" />
-  <script src="../node_modules/flowbite/dist/flowbite.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="static/dist/output.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.css" rel="stylesheet" />
+<script src="../node_modules/flowbite/dist/flowbite.min.js"></script>
 
- <nav class="bg-gray-800">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 items-center justify-between">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <img class="h-8 w-8" src="/static/images/armazem.png " alt="Your Company">
-            </div>
-            <div class="hidden md:block">
-              <div class="ml-10 flex items-baseline space-x-4">
-                {% set pages = {
-                  'homepage': 'Homepage',
-                  'customers': 'Customers',
-                  'products': 'Products',
-                  'orders': 'Orders'
-                } %}
-              
-                {% for page, label in pages.items() %}
-                  {% if current_page == page %}
-                    <a href="{{ url_for(page) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">{{ label }}</a>
-                  {% else %}
-                    <a href="{{ url_for(page) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label }}</a>
-                  {% endif %}
-                {% endfor %}
-              </div>
-            </div>
+<nav class="bg-gray-800">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="flex h-16 items-center justify-between">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <img class="h-8 w-8" src="/static/images/armazem.png" alt="Your Company">
+        </div>
+        <div class="hidden md:block">
+          <div class="ml-10 flex items-baseline space-x-4">
+            {% set pages = {
+            'homepage': 'Homepage',
+            'customers': 'Customers',
+            'products': 'Products',
+            'orders': 'Order'
+            } %}
+
+            {% for page, label in pages.items() %}
+            {% if current_page == page %}
+            <a href="{{ url_for(page) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium"
+              aria-current="page">{{ label }}</a>
+            {% else %}
+            <a href="{{ url_for(page) }}"
+              class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label
+              }}</a>
+            {% endif %}
+            {% endfor %}
           </div>
         </div>
       </div>
-    </nav>
-  <section class="content">
-    <header>
-      {% block header %}{% endblock %}
-    </header>
-    {% for message in get_flashed_messages() %}
-      <div class="flash">{{ message }}</div>
-    {% endfor %}
-    {% block content %}{% endblock %}~
-  </section>
+
+      {% if current_page == 'orders' %}
+      <!-- shopping cart for order page-->
+      <div class="relative ml-3">
+        <a href="{{ url_for('cart') }}">
+          <img class="h-8 w-8 cursor-pointer" src="/static/images/shopping-cart.png" alt="Shopping Cart">
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</nav>
+
+<section class="content">
+  {%if page_title!=None: %}
+  {% block header %}
+  <header class="bg-white shadow">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <h1 class="text-3xl font-bold tracking-tight text-gray-900">{{ page_title }}</h1>
+    </div>
+  </header>
+  {% endblock %}
+  {% endif %}
+  {% for message in get_flashed_messages() %}
+  <div class="flash">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}~
+</section>
 
 <!-- Path: db-workspace/app/templates/base.html -->

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+{% for product in cart_items['items'] %}
+{% set count = loop.index %}
+
+    <p> {{product}} </p>
+
+{% endfor %}
+
+{% endblock %}
