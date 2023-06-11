@@ -23,7 +23,7 @@ app = Flask(__name__, static_url_path='/static')
 pool = ConnectionPool(conninfo=DATABASE_URL)
 # the pool starts connecting immediately.
 
-cart_items = ['total_price', 'total_items', 'items']
+cart_items = {'total_price': 0, 'total_items':0, 'items': []}
 
 dictConfig(
     {
@@ -177,7 +177,7 @@ def add_to_cart():
 
     sku = request.form.get('sku')
     quantity = int(request.form.get('quantity'))
-    price = int(request.form.get('price')) * quantity
+    price = float(request.form.get('price')) * quantity
 
     
     for item in cart_items['items']:
@@ -191,7 +191,7 @@ def add_to_cart():
         cart_items['items'].append({'sku': sku, 'quantity': quantity, 'price_for_qty': price})
         
     cart_items['total_price'] += price
-    cart_items['total_quantity'] += quantity
+    cart_items['total_items'] += quantity
 
     return redirect('/orders') 
 
