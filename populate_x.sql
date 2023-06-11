@@ -1,74 +1,81 @@
 
--- populate.sql
+-- populate
 
-DO $$
-DECLARE
-  MAX_ROWS CONSTANT integer := 1000;
-  MIN_ROWS CONSTANT integer := 10;
-BEGIN
+CREATE TABLE IF NOT EXISTS gs (
+  n INTEGER
+);
+
+INSERT INTO gs(n)
+SELECT generate_series
+FROM generate_series(1, 50000);
 
 -- table "customer"
 INSERT INTO customer (cust_no, name, email, phone, address)
 SELECT
-  generate_series AS cust_no,
-  'Customer ' || generate_series AS name,
-  'customer' || generate_series || '@example.com' AS email,
-  '555-123456' AS phone,
-  'Rua ' || generate_series || ', '|| floor(random() * (9999 - 1000 + 1)) + 1000 
-         || '-'|| floor(random() * (999 - 100 + 1)) + 100 || ' Cidade ' || generate_series  AS address
-FROM generate_series(1, MAX_ROWS);
+  n AS cust_no,
+  'Customer ' || n AS name,
+  'customer' || n || '@example.com' AS email,
+  '987654321' AS phone,
+  'Rua ' || n || ', '|| n || n || n || n || '-' || n || n || n || ' Vila ' || n  AS address
+FROM gs;
 
 -- table "orders"
 INSERT INTO orders (order_no, cust_no, date)
 SELECT
-  ROW_NUMBER() OVER (ORDER BY cust_no) AS order_no,
-  cust_no,
-  CURRENT_DATE - (random() * 365)::int AS date
-FROM generate_series(1, MAX_ROWS), customer
-ORDER BY random()
-LIMIT MAX_ROWS;
+  n AS order_no,
+  FLOOR(random() * 50000) + 1 AS cust_no,
+  CURRENT_DATE - (random() * 365*10)::int AS date
+FROM gs;
 
 -- table "pay"
 INSERT INTO pay (order_no, cust_no)
 SELECT
-  order_no,
-  cust_no
-FROM orders
-ORDER BY random()
-LIMIT FLOOR(MAX_ROWS / 2);
+  t_rands.my_order_no,
+  (SELECT cust_no FROM orders o WHERE o.order_no = t_rands.my_order_no) AS cust_no
+FROM (
+  SELECT DISTINCT FLOOR(random() * 50000) + 1 AS my_order_no
+  FROM gs
+  LIMIT FLOOR(50000 / 2)
+) AS t_rands;
 
 -- table "employee"
 INSERT INTO employee (ssn, TIN, bdate, name)
 SELECT
-  'SSN' || generate_series AS ssn,
-  'TIN' || generate_series AS TIN,
+  'SSN' || n AS ssn,
+  'TIN' || n AS TIN,
   (date_trunc('year', current_date) - interval '18 years' - random() * interval '365 days')::date AS bdate,
-  'Employee ' || generate_series AS name
-FROM generate_series(1, MAX_ROWS);
+  'Employee ' || n AS name
+FROM gs;
 
 -- table "process"
 INSERT INTO process (ssn, order_no)
 SELECT
-    ssn,
-    order_no
-FROM employee, pay
-ORDER BY random()
-LIMIT FLOOR(MAX_ROWS / 2);
+    'SSN' || my_ssn AS ssn,
+    (SELECT FLOOR(random() * 50000) + 1 FROM gs LIMIT 1) AS order_no
+FROM (
+  SELECT DISTINCT FLOOR(random() * 50000) + 1 AS my_ssn
+  FROM gs
+  LIMIT FLOOR(50000 / 2)
+) AS t_rands;
 
 -- table "department"
 INSERT INTO department (name)
 SELECT
-  'Department ' || generate_series
-FROM generate_series(1, MIN_ROWS);
+  'Department ' || n
+FROM gs
+LIMIT FLOOR(50000/500);
 
 -- table "workplace"
 INSERT INTO workplace (address, lat, long)
 SELECT
-  'Rua ' || generate_series || ', '|| floor(random() * (9999 - 1000 + 1)) + 1000 
-         || '-'|| floor(random() * (999 - 100 + 1)) + 100 || ' Cidade ' || generate_series  AS address,
-  generate_series AS lat,
-  generate_series AS long
-FROM generate_series(1, MIN_ROWS * 10);
+  'Rua ' || n || ', '|| n || n || n || n || '-' || n || n || n || ' Cidade ' || n  AS address,
+  (my_lat_long * 180) - 90 AS lat,
+  (my_lat_long * 360) - 180 AS long
+FROM (
+  SELECT DISTINCT n, random() AS my_lat_long
+  FROM gs
+  LIMIT FLOOR(50000/100)
+) AS t_rands;
 
 -- table "office"
 INSERT INTO office (address)
@@ -76,7 +83,7 @@ SELECT
   address
 FROM workplace
 ORDER BY random()
-LIMIT (MIN_ROWS* 10) / 2;
+LIMIT 50000/100/2;
 
 -- table "warehouse"
 INSERT INTO warehouse (address)
@@ -89,51 +96,46 @@ WHERE address NOT IN (SELECT * FROM office);
 INSERT INTO works (ssn, name, address)
 SELECT
       e.ssn,
-      d.name,
-      w.address
-FROM employee AS e, department AS d, workplace as w
-ORDER BY random()
-LIMIT MAX_ROWS;
+      (SELECT 'Department ' || FLOOR(50000/500 * random() + 1) FROM gs LIMIT 1) AS name,
+      (SELECT address FROM workplace ORDER BY random() LIMIT 1) AS address
+FROM employee AS e
+LIMIT 50000;
 
 -- table "product"
 INSERT INTO product (SKU, name, description, price, ean)
 SELECT
-  'SKU' || generate_series AS SKU,
-  'Product ' || generate_series AS name,
-  'Description for Product ' || generate_series AS description,
-  (random() * 1000)::numeric(10, 2) AS price,
-  generate_series AS ean
-FROM generate_series(1, MAX_ROWS);
+  'SKU' || n AS SKU,
+  'Product ' || n AS name,
+  'Description for Product ' || n AS description,
+  (random() * 500)::numeric(10, 2) AS price,
+  n AS ean
+FROM gs;
 
 -- table "contains"
 INSERT INTO contains (order_no, SKU, qty)
-SELECT
+SELECT DISTINCT
     order_no,
     SKU,
-    (random() * 10 + 1)::int AS qty
-FROM orders, product
-ORDER BY random()
-LIMIT MAX_ROWS;
+    FLOOR(random() * 10 + 1) AS qty
+FROM (SELECT DISTINCT FLOOR(50000 * random() + 1) AS order_no,
+        'SKU' || FLOOR(50000 * random() + 1) AS SKU
+    FROM generate_series(1, 2000*4)) AS pairs;
 
 -- table "supplier"
 INSERT INTO supplier (TIN, name, address, SKU, date)
 SELECT
-  'TIN' || ROW_NUMBER() OVER () AS TIN,
-  'Supplier ' || ROW_NUMBER() OVER () AS name,
-  'Rua ' || ROW_NUMBER() OVER () || ', '|| floor(random() * (9999 - 1000 + 1)) + 1000 
-         || '-'|| floor(random() * (999 - 100 + 1)) + 100 || ' Cidade ' || ROW_NUMBER() OVER ()  AS address,
-  SKU,
+  'TIN' || n AS TIN,
+  'Supplier ' || n AS name,
+  'Rua ' || n || ', '|| n || n || n || n || '-' || n || n || n || ' Cidade ' || n  AS address,
+  (SELECT 'SKU' || FLOOR(50000 * random() + 1) FROM gs LIMIT 1) AS SKU,
   CURRENT_DATE - (random() * 365 * 2)::int AS date
-FROM generate_series(1, MAX_ROWS), product
-ORDER BY random()
-LIMIT MAX_ROWS;
+FROM gs;
 
 -- table "delivery"
 INSERT INTO delivery (address, TIN)
 SELECT
-  w.address,
-  TIN
-FROM warehouse w, supplier
-ORDER BY random()
-LIMIT MAX_ROWS;
-END $$;
+  pairs.new_address,
+  pairs.TIN
+FROM (SELECT DISTINCT (SELECT address FROM warehouse ORDER BY random() LIMIT 1) AS new_address,
+                              'TIN' || FLOOR(50000 * random() + 1) AS TIN FROM gs) AS pairs
+LIMIT FLOOR(50000/100/2 * 10);

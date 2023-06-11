@@ -18,6 +18,7 @@ from psycopg_pool import ConnectionPool
 # postgres://{user}:{password}@{hostname}:{port}/{database-name}
 DATABASE_URL = "postgres://db:db@postgres/db"
 
+# creates the flask app itself using static files from the static folder
 app = Flask(__name__, static_url_path='/static')
 
 pool = ConnectionPool(conninfo=DATABASE_URL)
@@ -25,14 +26,19 @@ pool = ConnectionPool(conninfo=DATABASE_URL)
 
 cart_items = {'total_price': 0, 'total_items':0, 'items': []}
 
+# Configure logging
 dictConfig(
     {
         "version": 1,
+
+        # errors log formats
         "formatters": {
             "default": {
                 "format": "[%(asctime)s] %(levelname)s in %(module)s:%(lineno)s - %(funcName)20s(): %(message)s",
             }
         },
+
+        # handlers define where the log is written
         "handlers": {
             "wsgi": {
                 "class": "logging.StreamHandler",
@@ -40,11 +46,16 @@ dictConfig(
                 "formatter": "default",
             }
         },
+
+        # root defines the default logging level
         "root": {"level": "INFO", "handlers": ["wsgi"]},
     }
 )
 
+# redudante? linha 22
 app = Flask(__name__)
+
+# object to log messages to
 log = app.logger
 
 
