@@ -19,16 +19,11 @@ from psycopg_pool import ConnectionPool
 # postgres://{user}:{password}@{hostname}:{port}/{database-name}
 DATABASE_URL = "postgres://db:db@postgres/db"
 
-<<<<<<< HEAD
-=======
 # Create a connection pool to the database.
->>>>>>> 38250b1c52b29555c124d119b7a16e4db0c18996
 pool = ConnectionPool(conninfo=DATABASE_URL)
 # the pool starts connecting immediately.
 
-
 cart_items = {'total_price': 0, 'total_items':0, 'items': []}
-
 
 
 dictConfig(
@@ -83,6 +78,31 @@ def homepage():
 
     return render_template("homepage.html", current_page="homepage" , page_title="Homepage")
 
+# CUSTOMERS PAGE
+@app.route("/customers", methods=("GET",))
+def customers():
+    """Show all the accounts, most recent first."""
+
+    with pool.connection() as conn:
+        cur = conn.cursor(row_factory=namedtuple_row)
+        cur.execute(
+
+                """
+                SELECT * FROM customer;
+                """,
+                {},
+            )
+        log.debug(f"Found {cur.rowcount} rows.")
+
+    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
+    if (
+        request.accept_mimetypes["application/json"]
+        and not request.accept_mimetypes["text/html"]
+    ):
+        return jsonify(cur)
+
+    return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers")
+
 # CREATE CUSTOMER
 @app.route('/create-customer', methods=['POST'])
 def create_customer():
@@ -106,6 +126,76 @@ def create_customer():
             log.debug(f"Inserted {cur.rowcount} rows.")
 
     return redirect('/customers')
+
+# DELETE CUSTOMER
+@app.route('/delete-customer', methods=['POST'])
+def delete_customer():
+    cust_no = request.form['cust_no']
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("DELETE FROM contains WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
+            cur.execute("DELETE FROM pay WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
+            cur.execute("DELETE FROM process WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
+            cur.execute("DELETE FROM orders WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
+            cur.execute("DELETE FROM customer WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
+
+            log.debug(f"Deleted {cur.rowcount} rows.")
+    
+    return redirect('/customers')
+
+# SUPPLIERS PAGE
+@app.route("/suppliers", methods=("GET",))
+def suppliers():
+    """Show the suppliers page."""
+
+    with pool.connection() as conn:
+        cur = conn.cursor(row_factory=namedtuple_row)
+        cur.execute(
+                """
+                SELECT * FROM supplier;
+                """,
+                {},
+            )
+        log.debug(f"Found {cur.rowcount} rows.")
+
+    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
+    if (
+        request.accept_mimetypes["application/json"]
+        and not request.accept_mimetypes["text/html"]
+    ):
+        return jsonify(cur)
+
+    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur )
+
+# CREATE SUPPLIER
+@app.route('/create-supplier', methods=['POST'])
+def create_supplier():
+    # Obtenha os dados do formulário enviado
+    TIN = request.form.get('TIN')
+    name = request.form.get('name')
+    address = request.form.get('address')
+    # deve-se escolher um SKU de um produto existente (listamos os produtos a procurar por sku ou nome)
+    SKU = request.form.get('SKU')
+    date = request.form.get('date')
+
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("INSERT INTO supplier (TIN, name, address, SKU, date) VALUES (%(supp_no)s, %(name)s, %(address)s, %(SKU)s, %(date)s)", {"TIN": TIN, "name": name, "address": address, "SKU": SKU, "date": date})
+            log.debug(f"Inserted {cur.rowcount} rows.")
+
+    return redirect('/suppliers')
+
+# DELETE SUPPLIER
+@app.route('/delete-supplier', methods=['POST'])
+def delete_supplier():
+    TIN = request.form['TIN']
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("DELETE FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
+
+            log.debug(f"Deleted {cur.rowcount} rows.")
+    
+    return redirect('/suppliers')
 
 # PRODUCTS PAGE
 @app.route("/products", methods=("GET",))
@@ -257,50 +347,6 @@ def add_to_cart():
     return redirect('/orders') 
 
 
-
-
-@app.route('/delete-customer', methods=['POST'])
-
-def delete_customer():
-    cust_no = request.form['cust_no']
-    with pool.connection() as conn:
-        with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("DELETE FROM contains WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
-            cur.execute("DELETE FROM pay WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
-            cur.execute("DELETE FROM process WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
-            cur.execute("DELETE FROM orders WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
-            cur.execute("DELETE FROM customer WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
-
-            log.debug(f"Deleted {cur.rowcount} rows.")
-    
-    return redirect('/customers')
-
-@app.route("/customers", methods=("GET",))
-def customers():
-    """Show all the accounts, most recent first."""
-
-    with pool.connection() as conn:
-        cur = conn.cursor(row_factory=namedtuple_row)
-        cur.execute(
-
-                """
-                SELECT * FROM customer;
-                """,
-                {},
-            )
-        log.debug(f"Found {cur.rowcount} rows.")
-
-    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
-    if (
-        request.accept_mimetypes["application/json"]
-        and not request.accept_mimetypes["text/html"]
-    ):
-        return jsonify(cur)
-
-    return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers")
-
-
-<<<<<<< HEAD
 # @app.route("/accounts/<account_number>/update", methods=("GET", "POST"))
 # def account_update(account_number):
 #     """Update the account balance."""
@@ -316,9 +362,7 @@ def customers():
 #                 {"account_number": account_number},
 #             ).fetchone()
 #             log.debug(f"Found {cur.rowcount} rows.")
-=======
 #here its professor's code
->>>>>>> 38250b1c52b29555c124d119b7a16e4db0c18996
 
 #     if request.method == "POST":
 #         balance = request.form["balance"]

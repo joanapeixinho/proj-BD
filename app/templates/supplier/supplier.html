@@ -10,36 +10,33 @@
           <div class="overflow-hidden ">
             <table class="min-w-full divide-y divide-gray-200 table-fixed dark:divide-gray-700">
               <caption class="p-4 caption-top text-left">
-                Here you can see all the products, add new ones or remove them.
+                Here you can see all the suppliers, add new ones or remove them.
                 <button data-modal-target="#modal" data-modal-toggle="#modal" type="button"
                   class="inline-flex items-center ml-96 px-3 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  onclick=''>Add new product</button>
+                  onclick=''>Add new supplier</button>
               </caption>
 
               <div id="#modal" tabindex="-1" class="fixed top-0 left-0 right-0 z-50 hidden p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
                 <section class="bg-white dark:bg-gray-900">
                   <div class="py-8 px-4 mx-auto max-w-2xl lg:py-16">
-                    <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">Add a new product</h2>
-                    <form method="POST" action="/create-product">
+                    <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">Add a new supplier</h2>
+                    <form method="POST" action="/create-supplier">
                       <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
                         <div class="sm:col-span-2">
                           <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
-                          <input type="text" name="name" id="name" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Pickle-flavored Toothpaste" required>
+                          <input type="text" name="name" id="name" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="John Doe" required>
                         </div>
-                        
-                        <div class="w-full">
-                          <label for="description" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Description</label>
-                          <input type="text" name="description" id="description" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="This is spicy" required>
-                        </div>
-                        
-                        <div>
-                          <label for="price" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Price</label>
-                          <input type="number" name="price"  id="price" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="69" required>
-                        </div>
-                        
                         <div class="sm:col-span-2">
-                          <label for="ean" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">EAN</label>
-                          <input type="number" name="ean" id="ean" autocomplete="ean" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="5901234123457" pattern="[0-9]{13}" title="Please enter the EAN in the format '5901234123457'" required>
+                          <label for="tin" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">TIN</label>
+                          <input type="number" name="tin" id="tin" autocomplete="tin" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="5901234123457" pattern="[0-9]{13}" title="Please enter the SKU in the format 'SKU34923239'" required>
+                        </div>
+                        <div class="sm:col-span-2">
+                          <label for="sku" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">SKU</label>
+                          <input type="number" name="sku" id="sku" autocomplete="sku" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="5901234123457" pattern="[0-9]{13}" title="Please enter the SKU in the format 'SKU34923239'" required>
+                        </div>
+                        <div class="sm:col-span-2">
+                          <label for="address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Address</label>
+                          <input type="text" name="address" id="address" autocomplete="address" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Rua das Bolachinhas, 1111-123 Lapónia" pattern="^[\p{L}\s]+,\s[0-9]{4}-[0-9]{3}\s[\p{L}\s]+$" title="Please enter the address in the format 'Rua Oceano Índico, 1234-123 Lisboa'" required>
                         </div>
                       </div>
                       
@@ -56,23 +53,23 @@
                 <tr>
                   <th scope="col"
                     class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
-                    ID
-                  </th>
-                  <th scope="col"
-                    class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
                     Name
                   </th>
                   <th scope="col"
                     class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
-                    Description
+                    TIN
                   </th>
                   <th scope="col"
                     class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
-                    Price
+                    Product's SKU
                   </th>
                   <th scope="col"
                     class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
-                    EAN
+                    Contract's Date
+                  </th>
+                  <th scope="col"
+                    class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                    Address
                   </th>
                   <th scope="col" class="p-4">
                     <span class="sr-only">Delete</span>
@@ -80,23 +77,23 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                {% for product in products %}
+                {% for supplier in suppliers %}
                 <tr>
-                  <td class="py-4 px-6">{{ product['sku'] }}</td>
-                  <td class="py-4 px-6">{{ product['name'] }}</td>
-                  <td class="py-4 px-6">{{ product['description'] }}</td>
-                  <td class="py-4 px-6">{{ product['price'] }}</td>
-                  <td class="py-4 px-6">{{ product['ean'] }}</td>
+                  <td class="py-4 px-6">{{ supplier['name'] }}</td>
+                  <td class="py-4 px-6">{{ supplier['tin'] }}</td>
+                  <td class="py-4 px-6">{{ supplier['sku'] }}</td>
+                  <td class="py-4 px-6">{{ supplier['date'] }}</td>
+                  <td class="py-4 px-6">{{ supplier['address'] }}</td>
                   <td class="py-4 px-6">
-                    <button data-modal-target="popup#{{product['sku']}}"
-                      data-modal-toggle="popup#{{product['sku']}}"
+                    <button data-modal-target="popup#{{supplier['cust_no']}}"
+                      data-modal-toggle="popup#{{supplier['cust_no']}}"
                       class="px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                       type="button">
                       Delete
                     </button>
                   </td>
                 </tr>
-                <div id="popup#{{product['sku']}}" tabindex="-1"
+                <div id="popup#{{supplier['cust_no']}}" tabindex="-1"
                   class="fixed top-0 left-0 right-0 z-50 hidden p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
                   <div class="relative w-full max-w-md max-h-full">
                     <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
@@ -118,15 +115,15 @@
                             d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure you want to
-                          delete this product?</h3>
-                        <form method="POST" action="/delete-product">
-                          <input type="hidden" name="sku" value="{{product['sku']}}">
+                          delete this supplier?</h3>
+                        <form method="POST" action="/delete-supplier">
+                          <input type="hidden" name="cust_no" value="{{supplier['cust_no']}}">
                           <button data-modal-hide="popup-modal" type="submit"
                             class="text-white bg-indigo-600 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:focus:ring-indigo-800 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2">
                             Yes, I'm sure
                           </button>
                         </form>
-                        <button data-modal-hide="popup-modal" type="button"
+                        <button data-modal-hide="popup#{{supplier['cust_no']}}" type="button"
                           class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">No,
                           cancel</button>
                       </div>
@@ -137,7 +134,13 @@
               </tbody>
             </table>
           </div>
-{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
 
 
+</main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js"></script>
+
+{% endblock %}
