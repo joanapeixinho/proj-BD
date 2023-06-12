@@ -18,9 +18,6 @@ from psycopg_pool import ConnectionPool
 # postgres://{user}:{password}@{hostname}:{port}/{database-name}
 DATABASE_URL = "postgres://db:db@postgres/db"
 
-# creates the flask app itself using static files from the static folder
-app = Flask(__name__, static_url_path='/static')
-
 pool = ConnectionPool(conninfo=DATABASE_URL)
 # the pool starts connecting immediately.
 
@@ -52,19 +49,29 @@ dictConfig(
     }
 )
 
-# redudante? linha 22
+# creates the flask app itself
 app = Flask(__name__)
 
 # object to log messages to
 log = app.logger
 
 
+# testing templates
 @app.route("/test", methods=("GET",))
 def test():
     """Show the index page."""
 
     return render_template("test.html")
 
+
+# HOME PAGE
+@app.route("/", methods=("GET",))
+def homepage():
+    """Show the index page."""
+
+    return render_template("homepage.html", current_page="homepage" , page_title="Homepage")
+
+# CREATE CUSTOMER
 @app.route('/create-customer', methods=['POST'])
 def create_customer():
     # Obtenha os dados do formulário enviado
@@ -72,8 +79,6 @@ def create_customer():
     email = request.form.get('email')
     phone = request.form.get('phone')
     address = request.form.get('address')
-
-  
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
@@ -85,12 +90,7 @@ def create_customer():
 
     return redirect('/customers')
 
-@app.route("/", methods=("GET",))
-def homepage():
-    """Show the index page."""
-
-    return render_template("homepage.html", current_page="homepage" , page_title="Homepage")
-
+# PRODUCTS PAGE
 @app.route("/products", methods=("GET",))
 def products():
     """Show the products page."""
@@ -116,6 +116,7 @@ def products():
 
     return render_template("products/products.html", current_page="products", page_title="Products", products=cur )
 
+# CREATE PRODUCT
 @app.route('/create-product', methods=['POST'])
 def create_product():
     # Obtenha os dados do formulário enviado
@@ -136,6 +137,7 @@ def create_product():
 
     return redirect('/products')
 
+# DELETE PRODUCT
 @app.route('/delete-product', methods=['POST'])
 def delete_product():
     sku = request.form['sku']
@@ -152,7 +154,7 @@ def delete_product():
     
     return redirect('/products')
 
-
+# ORDERS PAGE
 @app.route("/orders", methods=("GET",))
 def orders():
     """Show the index page."""
@@ -227,10 +229,6 @@ def delete_customer():
     
     return redirect('/customers')
 
-if __name__ == '__main__':
-    app.run()
-
-
 @app.route("/customers", methods=("GET",))
 def customers():
     """Show all the accounts, most recent first."""
@@ -255,59 +253,55 @@ def customers():
     return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers")
 
 
+# @app.route("/accounts/<account_number>/update", methods=("GET", "POST"))
+# def account_update(account_number):
+#     """Update the account balance."""
 
+#     with pool.connection() as conn:
+#         with conn.cursor(row_factory=namedtuple_row) as cur:
+#             account = cur.execute(
+#                 """
+#                 SELECT account_number, branch_name, balance
+#                 FROM account
+#                 WHERE account_number = %(account_number)s;
+#                 """,
+#                 {"account_number": account_number},
+#             ).fetchone()
+#             log.debug(f"Found {cur.rowcount} rows.")
 
-@app.route("/accounts/<account_number>/update", methods=("GET", "POST"))
-def account_update(account_number):
-    """Update the account balance."""
+#     if request.method == "POST":
+#         balance = request.form["balance"]
 
-    with pool.connection() as conn:
-        with conn.cursor(row_factory=namedtuple_row) as cur:
-            account = cur.execute(
-                """
-                SELECT account_number, branch_name, balance
-                FROM account
-                WHERE account_number = %(account_number)s;
-                """,
-                {"account_number": account_number},
-            ).fetchone()
-            log.debug(f"Found {cur.rowcount} rows.")
+#         error = None
 
-    if request.method == "POST":
-        balance = request.form["balance"]
+#         if not balance:
+#             error = "Balance is required."
+#             if not balance.isnumeric():
+#                 error = "Balance is required to be numeric."
 
-        error = None
+#         if error is not None:
+#             flash(error)
+#         else:
+#             with pool.connection() as conn:
+#                 with conn.cursor(row_factory=namedtuple_row) as cur:
+#                     cur.execute(
+#                         """
+#                         UPDATE account
+#                         SET balance = %(balance)s
+#                         WHERE account_number = %(account_number)s;
+#                         """,
+#                         {"account_number": account_number, "balance": balance},
+#                     )
+#                 conn.commit()
+#             return redirect(url_for("account_index"))
 
-        if not balance:
-            error = "Balance is required."
-            if not balance.isnumeric():
-                error = "Balance is required to be numeric."
+#     return render_template("account/update.html", account=account)
 
-        if error is not None:
-            flash(error)
-        else:
-            with pool.connection() as conn:
-                with conn.cursor(row_factory=namedtuple_row) as cur:
-                    cur.execute(
-                        """
-                        UPDATE account
-                        SET balance = %(balance)s
-                        WHERE account_number = %(account_number)s;
-                        """,
-                        {"account_number": account_number, "balance": balance},
-                    )
-                conn.commit()
-            return redirect(url_for("account_index"))
-
-    return render_template("account/update.html", account=account)
-
-@app.route("/ping", methods=("GET",))
-def ping():
-    log.debug("ping!")
-    return jsonify({"message": "pong!", "status": "success"})
+# @app.route("/ping", methods=("GET",))
+# def ping():
+#     log.debug("ping!")
+#     return jsonify({"message": "pong!", "status": "success"})
 
 
 if __name__ == "__main__":
     app.run()
-
-
