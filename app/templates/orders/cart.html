@@ -9,11 +9,10 @@
 <section>
     <div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <div class="mx-auto max-w-3xl">
-        <header class="text-center">
-          <h1 class="text-xl font-bold text-gray-900 sm:text-3xl">Your Cart</h1>
-        </header>
+       
   
         <div class="mt-8">
+          {% if cart_items['items']|length != 0 %}
           <ul class="space-y-4">
             {% for product in cart_items['items'] %}
             {% set count = loop.index %}
@@ -51,7 +50,9 @@
                   />
                 </form>
   
-                <button class="text-gray-600 transition hover:text-red-600">
+                <form method="POST" action="/remove_from_cart">
+                <button class="text-gray-600 transition hover:text-red-600" type ="submit" >
+                  <input type="hidden" name="sku_to_remove" value="{{product['sku']}}">
                   <span class="sr-only">Remove item</span>
   
                   <svg
@@ -69,11 +70,12 @@
                     />
                   </svg>
                 </button>
+                </form>
               </div>
             </li>
             {% endfor %}
           </ul>
-  
+
           <div class="mt-8 flex justify-end border-t border-gray-100 pt-8">
             <div class="w-screen max-w-lg space-y-4">
               <dl class="space-y-0.5 text-sm text-gray-700">
@@ -97,7 +99,13 @@
             </div>
           </div>
         </div>
+        {% else %}
+        <div class="mt-8">
+          <img src="{{ url_for('static', filename='images/sad.png') }}" alt="" class="h-64 w-64 mx-auto p-4" />
+          <p class="text-center text-gray-600">Your cart is empty, browse our products and order something! </p>
+        
       </div>
+      {% endif %}
     </div>
   </section>
 

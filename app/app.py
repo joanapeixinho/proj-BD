@@ -157,9 +157,9 @@ def delete_product():
             cur.execute("DELETE FROM contains WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
             
             # In case we are deleting the last product in an order, we need to delete the orders, pay and process tables
+            cur.execute("DELETE FROM process WHERE order_no NOT IN (SELECT order_no FROM contains)")
+            cur.execute("DELETE FROM pay WHERE order_no NOT IN (SELECT order_no FROM contains)")
             cur.execute("DELETE FROM orders WHERE order_no NOT IN (SELECT order_no FROM contains)")
-            cur.execute("DELETE FROM pay WHERE order_no NOT IN (SELECT order_no FROM orders)")
-            cur.execute("DELETE FROM process WHERE order_no NOT IN (SELECT order_no FROM orders)")
             
             cur.execute("DELETE FROM delivery WHERE TIN IN (SELECT TIN FROM supplier WHERE sku = %(sku)s)", {"sku": sku})
             cur.execute("DELETE FROM supplier WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
@@ -201,8 +201,27 @@ def orders():
 def cart():
     
 
-    return render_template("orders/cart.html", current_page="cart", page_title="Cart", cart_items=cart_items)
+    return render_template("orders/cart.html", current_page="cart", page_title="Your Cart", cart_items=cart_items)
+
+@app.route("/remove_from_cart",methods=['POST'])
+def remove_from_cart():
+    sku = request.form['sku_to_remove']
+    #remove item from cart
+    for item in cart_items['items']:
+        if item['sku'] == sku:
+            price = item['price_for_qty']
+            quantity = item['quantity']
+            cart_items['items'].remove(item)
+            break
+    else:
+        flash("Item not found in cart")
+        return redirect('/cart')
     
+    #update cart total price and total items
+    cart_items['total_price'] -= price
+    cart_items['total_items'] -= quantity
+
+    return redirect('/cart')
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
