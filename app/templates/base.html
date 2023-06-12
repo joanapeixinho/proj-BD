@@ -40,7 +40,10 @@
       <!-- shopping cart for order page-->
       <div class="relative ml-3">
         <a href="{{ url_for('cart') }}">
+
           <img class="h-8 w-8 cursor-pointer" src="/static/images/shopping-cart.png" alt="Shopping Cart">
+          <div class="absolute inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 border-2 border-white rounded-full -top-2 -right-2 dark:border-gray-900"> {{cart_items['total_items']}} </div>
+
         </a>
       </div>
       {% endif %}
