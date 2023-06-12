@@ -110,7 +110,7 @@ def products():
         cur = conn.cursor(row_factory=namedtuple_row)
         cur.execute(
                 """
-                SELECT * FROM product;
+                SELECT * FROM product ORDER BY sku;
                 """,
                 {},
             )
@@ -141,13 +141,30 @@ def create_product():
             # If the table is empty, set max_sku to 0
             if max_sku == None:
                 max_sku = 0
-            sku_n = max_sku + 1
+            sku_n = max_sku + 1 
                 
             sku = "SKU" + str(sku_n)
             cur.execute("INSERT INTO product (sku, name, description, price, ean) VALUES (%(sku)s, %(name)s, %(description)s, %(price)s, %(ean)s)", {"sku": sku, "name": name, "description": description, "price": price, "ean": ean})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
     return redirect('/products')
+
+
+@app.route('/edit-product', methods=['POST'])
+def edit_product():
+    # Obtenha os dados do formulário enviado
+    sku = request.form['sku']
+    description = request.form.get('description')
+    price = request.form.get('price')
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("UPDATE product SET description = %(description)s, price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "description": description, "price": price})
+            
+            log.debug(f"Deleted {cur.rowcount} rows.")
+    
+    
+    return redirect('/products')
+
 
 @app.route('/delete-product', methods=['POST'])
 def delete_product():
@@ -161,8 +178,7 @@ def delete_product():
             cur.execute("DELETE FROM pay WHERE order_no NOT IN (SELECT order_no FROM contains)")
             cur.execute("DELETE FROM orders WHERE order_no NOT IN (SELECT order_no FROM contains)")
             
-            cur.execute("DELETE FROM delivery WHERE TIN IN (SELECT TIN FROM supplier WHERE sku = %(sku)s)", {"sku": sku})
-            cur.execute("DELETE FROM supplier WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
+            cur.execute("UPDATE supplier SET sku = NULL WHERE sku = %(sku)s", {"sku": sku})
             cur.execute("DELETE FROM product WHERE sku = %(sku)s", {"sku": sku})
             
 
