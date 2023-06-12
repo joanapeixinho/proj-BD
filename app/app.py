@@ -135,14 +135,15 @@ def create_product():
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("SELECT MAX(sku) FROM product")
+            cur.execute("SELECT MAX(CAST(SUBSTRING(sku, 4) AS INT)) FROM product")
             max_sku = cur.fetchone()[0]
             
             # If the table is empty, set max_sku to 0
             if max_sku == None:
                 max_sku = 0
+            sku_n = max_sku + 1
                 
-            sku = max_sku + 1
+            sku = "SKU" + str(sku_n)
             cur.execute("INSERT INTO product (sku, name, description, price, ean) VALUES (%(sku)s, %(name)s, %(description)s, %(price)s, %(ean)s)", {"sku": sku, "name": name, "description": description, "price": price, "ean": ean})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
