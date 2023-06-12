@@ -9,6 +9,7 @@ from flask import jsonify
 from flask import redirect
 from flask import render_template
 from flask import request
+from flask import session
 from flask import url_for
 from urllib.request import urlopen
 from psycopg.rows import namedtuple_row
@@ -18,12 +19,18 @@ from psycopg_pool import ConnectionPool
 # postgres://{user}:{password}@{hostname}:{port}/{database-name}
 DATABASE_URL = "postgres://db:db@postgres/db"
 
+<<<<<<< HEAD
+=======
+# Create a connection pool to the database.
+>>>>>>> 38250b1c52b29555c124d119b7a16e4db0c18996
 pool = ConnectionPool(conninfo=DATABASE_URL)
 # the pool starts connecting immediately.
 
+
 cart_items = {'total_price': 0, 'total_items':0, 'items': []}
 
-# Configure logging
+
+
 dictConfig(
     {
         "version": 1,
@@ -54,6 +61,11 @@ app = Flask(__name__)
 
 # object to log messages to
 log = app.logger
+app.secret_key = 'super secret key'
+
+def get_flash_messages():
+    messages = session.pop('_flashes', [])
+    return messages
 
 
 # testing templates
@@ -84,6 +96,11 @@ def create_customer():
         with conn.cursor(row_factory=namedtuple_row) as cur:
             cur.execute("SELECT MAX(cust_no) FROM CUSTOMER")
             max_cust_no = cur.fetchone()[0]
+            
+            # (Miguel speaking) In case the table is empty and you try to add a customer
+            if max_cust_no == None:
+                max_cust_no = 0
+            
             cust_no = max_cust_no + 1
             cur.execute("INSERT INTO customer (cust_no, name, email, phone, address) VALUES (%(cust_no)s, %(name)s, %(email)s, %(phone)s, %(address)s)", {"cust_no": cust_no, "name": name, "email": email, "phone": phone, "address": address})
             log.debug(f"Inserted {cur.rowcount} rows.")
@@ -94,8 +111,6 @@ def create_customer():
 @app.route("/products", methods=("GET",))
 def products():
     """Show the products page."""
-
-   
 
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
@@ -125,13 +140,17 @@ def create_product():
     price = request.form.get('price')
     ean = request.form.get('ean')
 
-  
-
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("SELECT MAX(sku) FROM product")
+            cur.execute("SELECT MAX(CAST(SUBSTRING(sku, 4) AS INT)) FROM product")
             max_sku = cur.fetchone()[0]
-            sku = max_sku + 1
+            
+            # If the table is empty, set max_sku to 0
+            if max_sku == None:
+                max_sku = 0
+            sku_n = max_sku + 1
+                
+            sku = "SKU" + str(sku_n)
             cur.execute("INSERT INTO product (sku, name, description, price, ean) VALUES (%(sku)s, %(name)s, %(description)s, %(price)s, %(ean)s)", {"sku": sku, "name": name, "description": description, "price": price, "ean": ean})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
@@ -144,6 +163,12 @@ def delete_product():
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
             cur.execute("DELETE FROM contains WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
+            
+            # In case we are deleting the last product in an order, we need to delete the orders, pay and process tables
+            cur.execute("DELETE FROM process WHERE order_no NOT IN (SELECT order_no FROM contains)")
+            cur.execute("DELETE FROM pay WHERE order_no NOT IN (SELECT order_no FROM contains)")
+            cur.execute("DELETE FROM orders WHERE order_no NOT IN (SELECT order_no FROM contains)")
+            
             cur.execute("DELETE FROM delivery WHERE TIN IN (SELECT TIN FROM supplier WHERE sku = %(sku)s)", {"sku": sku})
             cur.execute("DELETE FROM supplier WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
             cur.execute("DELETE FROM product WHERE sku = %(sku)s", {"sku": sku})
@@ -159,6 +184,7 @@ def delete_product():
 def orders():
     """Show the index page."""
 
+    messages = get_flash_messages()  
     
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
@@ -177,13 +203,33 @@ def orders():
     ):
         return jsonify(cur)
     
-    return render_template("orders/orders.html", current_page="orders", page_title="Available for Order", products=cur, cart_items=cart_items )
+    return render_template("orders/orders.html", current_page="orders", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages )
 
 @app.route("/cart", methods=("GET",))
 def cart():
     
-    return render_template("orders/cart.html", current_page="cart", page_title="Cart", cart_items=cart_items )
+
+    return render_template("orders/cart.html", current_page="cart", page_title="Your Cart", cart_items=cart_items)
+
+@app.route("/remove_from_cart",methods=['POST'])
+def remove_from_cart():
+    sku = request.form['sku_to_remove']
+    #remove item from cart
+    for item in cart_items['items']:
+        if item['sku'] == sku:
+            price = item['price_for_qty']
+            quantity = item['quantity']
+            cart_items['items'].remove(item)
+            break
+    else:
+        flash("Item not found in cart")
+        return redirect('/cart')
     
+    #update cart total price and total items
+    cart_items['total_price'] -= price
+    cart_items['total_items'] -= quantity
+
+    return redirect('/cart')
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
@@ -201,10 +247,12 @@ def add_to_cart():
             break
     else:
         # Add new product to cart
-        cart_items['items'].append({'sku': sku, 'quantity': quantity, 'price_for_qty': price})
+        cart_items['items'].append({'sku': sku, 'quantity': quantity, 'price_for_qty': price, 'name': request.form.get('name')})
         
     cart_items['total_price'] += price
     cart_items['total_items'] += quantity
+
+    flash("added" + str(quantity) +  "items to cart sucessfully")
 
     return redirect('/orders') 
 
@@ -222,10 +270,8 @@ def delete_customer():
             cur.execute("DELETE FROM process WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
             cur.execute("DELETE FROM orders WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
             cur.execute("DELETE FROM customer WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
-            
 
             log.debug(f"Deleted {cur.rowcount} rows.")
-    
     
     return redirect('/customers')
 
@@ -236,6 +282,7 @@ def customers():
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
         cur.execute(
+
                 """
                 SELECT * FROM customer;
                 """,
@@ -253,6 +300,7 @@ def customers():
     return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers")
 
 
+<<<<<<< HEAD
 # @app.route("/accounts/<account_number>/update", methods=("GET", "POST"))
 # def account_update(account_number):
 #     """Update the account balance."""
@@ -268,6 +316,9 @@ def customers():
 #                 {"account_number": account_number},
 #             ).fetchone()
 #             log.debug(f"Found {cur.rowcount} rows.")
+=======
+#here its professor's code
+>>>>>>> 38250b1c52b29555c124d119b7a16e4db0c18996
 
 #     if request.method == "POST":
 #         balance = request.form["balance"]
