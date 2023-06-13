@@ -167,7 +167,7 @@ def suppliers():
     ):
         return jsonify(cur)
 
-    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur, messages=messages)
+    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur, messages=messages, session=session , cart_items=cart_items)
 
 
 @app.route('/create-supplier', methods=['POST'])
