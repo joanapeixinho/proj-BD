@@ -185,6 +185,22 @@ def create_supplier():
 
     return redirect('/suppliers')
 
+# EDIT PRODUCT
+@app.route('/edit-product', methods=['POST'])
+def edit_product():
+    # Obtenha os dados do formulário enviado
+    sku = request.form['sku']
+    description = request.form.get('description')
+    price = request.form.get('price')
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("UPDATE product SET description = %(description)s, price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "description": description, "price": price})
+            
+            log.debug(f"Deleted {cur.rowcount} rows.")
+    
+    
+    return redirect('/products')
+
 # DELETE SUPPLIER
 @app.route('/delete-supplier', methods=['POST'])
 def delete_supplier():
