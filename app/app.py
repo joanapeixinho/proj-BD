@@ -2,7 +2,7 @@
 from logging.config import dictConfig
 
 import psycopg
-import json
+import datetime
 from flask import flash
 from flask import Flask
 from flask import jsonify
@@ -14,6 +14,7 @@ from flask import url_for
 from urllib.request import urlopen
 from psycopg.rows import namedtuple_row
 from psycopg_pool import ConnectionPool
+
 
 
 # postgres://{user}:{password}@{hostname}:{port}/{database-name}
@@ -76,7 +77,7 @@ def test():
 def homepage():
     """Show the index page."""
 
-    return render_template("homepage.html", current_page="homepage" , page_title="Homepage")
+    return render_template("homepage.html", current_page="homepage" , page_title="Homepage", session=session , cart_items=cart_items)
 
 # CUSTOMERS PAGE
 @app.route("/customers", methods=("GET",))
@@ -101,7 +102,7 @@ def customers():
     ):
         return jsonify(cur)
 
-    return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers")
+    return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers", session=session , cart_items=cart_items)
 
 # CREATE CUSTOMER
 @app.route('/create-customer', methods=['POST'])
@@ -148,8 +149,6 @@ def delete_customer():
 def suppliers():
     """Show the suppliers page."""
 
-    messages = get_flash_messages()
-
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
         cur.execute(
@@ -167,54 +166,25 @@ def suppliers():
     ):
         return jsonify(cur)
 
-    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur, messages=messages)
+    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur, session=session , cart_items=cart_items )
 
 # CREATE SUPPLIER
 @app.route('/create-supplier', methods=['POST'])
 def create_supplier():
-
     # Obtenha os dados do formulário enviado
     TIN = request.form.get('TIN')
     name = request.form.get('name')
     address = request.form.get('address')
+    # deve-se escolher um SKU de um produto existente (listamos os produtos a procurar por sku ou nome)
     SKU = request.form.get('SKU')
     date = request.form.get('date')
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            while True:
-                
-                cur.execute("SELECT TIN FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
-                if cur.fetchone() != None:
-                    flash("TIN already registed. Supplier not created.")
-                    break
-
-                cur.execute("SELECT SKU FROM product WHERE SKU = %(SKU)s", {"SKU": SKU})
-                if cur.fetchone() == None:
-                    flash("SKU does not exist. Supplier not created.")
-                    break
-
-                cur.execute("INSERT INTO supplier (TIN, name, address, SKU, date) VALUES (%(TIN)s, %(name)s, %(address)s, %(SKU)s, %(date)s)", {"TIN": TIN, "name": name, "address": address, "SKU": SKU, "date": date})
-                log.debug(f"Inserted {cur.rowcount} rows.")
-                break
+            cur.execute("INSERT INTO supplier (TIN, name, address, SKU, date) VALUES (%(supp_no)s, %(name)s, %(address)s, %(SKU)s, %(date)s)", {"TIN": TIN, "name": name, "address": address, "SKU": SKU, "date": date})
+            log.debug(f"Inserted {cur.rowcount} rows.")
 
     return redirect('/suppliers')
-
-# EDIT PRODUCT
-@app.route('/edit-product', methods=['POST'])
-def edit_product():
-    # Obtenha os dados do formulário enviado
-    sku = request.form['sku']
-    description = request.form.get('description')
-    price = request.form.get('price')
-    with pool.connection() as conn:
-        with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("UPDATE product SET description = %(description)s, price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "description": description, "price": price})
-            
-            log.debug(f"Deleted {cur.rowcount} rows.")
-    
-    
-    return redirect('/products')
 
 # DELETE SUPPLIER
 @app.route('/delete-supplier', methods=['POST'])
@@ -222,7 +192,6 @@ def delete_supplier():
     TIN = request.form['TIN']
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("DELETE FROM delivery WHERE TIN = %(TIN)s", {"TIN": TIN})
             cur.execute("DELETE FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
 
             log.debug(f"Deleted {cur.rowcount} rows.")
@@ -251,7 +220,7 @@ def products():
     ):
         return jsonify(cur)
 
-    return render_template("products/products.html", current_page="products", page_title="Products", products=cur )
+    return render_template("products/products.html", current_page="products", page_title="Products", products=cur , session=session , cart_items=cart_items )
 
 # CREATE PRODUCT
 @app.route('/create-product', methods=['POST'])
@@ -301,9 +270,13 @@ def delete_product():
     return redirect('/products')
 
 # ORDERS PAGE
-@app.route("/orders", methods=("GET",))
-def orders():
+@app.route("/order", methods=("GET",))
+def order():
     """Show the index page."""
+    # Check if the user is logged in
+    if 'customer' not in session:
+        flash("You need to log in to checkout")
+        return redirect('/login')
 
     messages = get_flash_messages()  
     
@@ -324,13 +297,44 @@ def orders():
     ):
         return jsonify(cur)
     
-    return render_template("orders/orders.html", current_page="orders", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages )
+    return render_template("orders/order.html", current_page="order", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages, session = session)
+
+@app.route("/orders", methods=("GET",))
+def orders():
+    """Show all orders for customer"""
+    # Resto do código...
+
+    # Get all orders for customer
+    with pool.connection() as conn:
+        cur = conn.cursor(row_factory=namedtuple_row)
+        cur.execute(
+            """
+            SELECT * FROM orders WHERE cust_no = %(cust_no)s;
+            """,
+            {"cust_no": session['customer'][0]},
+        )
+        log.debug(f"Found {cur.rowcount} rows.")
+        orders = cur.fetchall()  # Recupera todos os resultados da consulta
+
+    # Get all payed orders for customer
+    with pool.connection() as conn:
+        cur1 = conn.cursor(row_factory=namedtuple_row)
+        cur1.execute(
+            """
+            SELECT * FROM pay WHERE cust_no = %(cust_no)s;
+            """,
+            {"cust_no": session['customer'][0]},
+        )
+        log.debug(f"Found {cur1.rowcount} rows.")
+        payed_orders = cur1.fetchall()  # Recupera todos os resultados da consulta
+
+    return render_template("orders/orders.html", current_page="orders", page_title="Your Orders", orders=orders, payed_orders= [order.order_no for order in payed_orders], session = session, cart_items=cart_items)
 
 @app.route("/cart", methods=("GET",))
 def cart():
-    
-
-    return render_template("orders/cart.html", current_page="cart", page_title="Your Cart", cart_items=cart_items)
+    flash(session)
+    message = get_flash_messages()
+    return render_template("orders/cart.html", current_page="cart", page_title="Your Cart", cart_items=cart_items, message=message , session=session)
 
 @app.route("/remove_from_cart",methods=['POST'])
 def remove_from_cart():
@@ -375,7 +379,74 @@ def add_to_cart():
 
     flash("added" + str(quantity) +  "items to cart sucessfully")
 
-    return redirect('/orders') 
+    return redirect('/order') 
+
+@app.route('/checkout', methods=['GET', 'POST'])
+def checkout():
+    
+    # Check if the user is logged in
+    if 'customer' not in session:
+        flash("You need to log in to checkout")
+        return redirect('/login')
+    
+
+    current_date = datetime.date.today()  # Obtém a data atual
+
+    # Create a new order
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("SELECT MAX(order_no) FROM orders")
+            max_order_no = cur.fetchone()[0]
+            order_no = max_order_no + 1 if max_order_no != None else 1
+            cur.execute("INSERT INTO orders (order_no, cust_no, date) VALUES (%(order_no)s, %(cust_no)s, %(date)s)", {"order_no": order_no, "cust_no": session['customer'][0], "date": current_date})
+            log.debug(f"Inserted {cur.rowcount} rows.")
+    
+    # Add the products to the order
+    for item in cart_items['items']:
+        with pool.connection() as conn:
+            with conn.cursor(row_factory=namedtuple_row) as cur:
+                cur.execute("INSERT INTO contains (order_no, SKU, QTY) VALUES (%(order_no)s, %(SKU)s, %(QTY)s)", {"order_no": order_no, "SKU": item['sku'], "QTY": item['quantity']})
+                log.debug(f"Inserted {cur.rowcount} rows.")
+
+    # Clear the cart
+    cart_items['items'] = []
+    cart_items['total_price'] = 0
+    cart_items['total_items'] = 0
+
+    return redirect('/orders')
+
+@app.route('/pay', methods=['GET', 'POST'])
+def pay():
+    order_no = request.form.get('order_no')
+    cust_no = request.form.get('cust_no')
+
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("INSERT INTO pay (order_no, cust_no) VALUES (%(order_no)s, %(cust_no)s)", {"order_no": order_no, "cust_no": cust_no}) 
+            log.debug(f"Inserted {cur.rowcount} rows.")
+
+    return redirect('/orders')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    messages= get_flash_messages()
+    message = messages[0][1] if len(messages) > 0 else None
+    if request.method == 'POST':
+        email = request.form.get('email')
+
+        with pool.connection() as conn:
+            with conn.cursor(row_factory=namedtuple_row) as cur:
+                cur.execute("SELECT * FROM customer WHERE email = %(email)s ", {"email": email})
+                log.debug(f"Found {cur.rowcount} rows.")
+                customer = cur.fetchone()
+                if customer != None:
+                    session['customer'] = customer
+                    return redirect('/order')
+                else:
+                    flash("Invalid email: " + email)
+                    return redirect('/login')
+    else:
+        return render_template('customer/login.html', current_page="login", page_title="login", message=message)
 
 
 # @app.route("/accounts/<account_number>/update", methods=("GET", "POST"))

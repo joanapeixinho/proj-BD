@@ -1,53 +1,99 @@
 {% extends 'base.html' %}
 
-
 {% block content %}
 
-{% if messages %}
+<main>
+    <div class="p-4 max-w-6xl mx-auto">
+        <div class="flex flex-col">
+            <div class="overflow-x-auto shadow-md sm:rounded-lg">
+                <div class="inline-block min-w-full align-middle">
+                    <div class="overflow-hidden ">
+                        <table class="min-w-full divide-y divide-gray-200 table-fixed dark:divide-gray-700">
 
-{% endif %}
+                            <thead class="bg-gray-100 dark:bg-gray-700">
+                                <tr>
+                                    <th scope="col"
+                                        class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                                        ID
+                                    </th>
+                                    <th scope="col"
+                                        class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                                        Customer
+                                    </th>
+                                    <th scope="col"
+                                        class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                                        Date
+                                    </th>
+                                    <th scope="col"
+                                        class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                                        Status
+                                    </th>
 
-<div class="flex flex-wrap justify-center mx-8">
-  {% for product in products %}
-  {% set count = loop.index %}
-  <div
-    class="w-full max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 mx-4 my-4">
-    <a href="#">
-      <img class="p-8 rounded-t-lg w-full h-64 object-cover"
-        src="{{ url_for('static', filename='images/products/product' + count|string + '.jpg') }}" alt="product image" />
-    </a>
-    <div class="px-5 pb-5">
-      <a href="#">
-        <h5 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">{{ product.name }}</h5>
-      </a>
-      <div class="flex items-center justify-between mt-4">
+                                    <th scope="col" class="p-4">
+                                        <span class="sr-only">pay</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                                {% for order in orders %}
+                                <tr>
+                                    <td class="py-4 px-6">{{ order['order_no'] }}</td>
+                                    <td class="py-4 px-6">{{ order['cust_no'] }}</td>
+                                    <td class="py-4 px-6">{{ order['date'] }}</td>
+                                    <td class="py-4 px-6">
+                                        {% if order['order_no'] in payed_orders %}
 
-        <span class="text-3xl font-bold text-gray-900 dark:text-white">{{product.price}} €</span>
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            Payed
+                                        </span>
+                                        {% else %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                            Not Payed
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    {% if order['order_no'] not in payed_orders %}
+                                    <td class="py-4 px-6">
 
-        <form action="{{ url_for('add_to_cart') }}" method="POST" target="_self">
-          <input type="hidden" name="price" value="{{ product.price }}">
-          <input type="hidden" name="name" value="{{ product.name }}">
-          <input type="hidden" name="sku" value="{{ product.sku }}">
-          <div class="flex items-center">
-            <label for="quantity" class="mr-2">qty</label>
-            <input type="number" name="quantity" value="1" min="1" class="w-12 mr-4">
-            <button type="submit"
-              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Add
-              to cart</button>
-          </div>
-        </form>
-      </div>
+                                        <button data-modal-target="#modal{{order['order_no']}}" data-modal-toggle="#modal{{order['order_no']}}"
+                                            class="px-3 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                            type="button">
+                                            Pay
+                                        </button>
+                                        <div id="#modal{{order['order_no']}}" tabindex="-1"
+                                            class="fixed top-0 left-0 right-0 z-50 hidden p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                                            <section class="bg-white dark:bg-gray-900">
+                                                <div class="py-8 px-4 mx-auto max-w-2xl lg:py-16">
+                                                    <form method="POST" action='/pay'>
+                                                        <input type="hidden" name="cust_no" value="{{order['cust_no']}}">
+                                                        <input type="hidden" name="order_no" value="{{order['order_no']}}">
+                                                        <h2 class="p-6 text-xl leading-8 text-gray-600">
+                                                            Are you sure you want to pay this order?
+                                                        </h2>
+                                                        <img class="h-12 mx-auto"
+                                                            src="static/images/atm-card.png">
+                                                            
+                                                        <div class="p-4 flex justify-center">
+                                                            <button type="submit"
+                                                                class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">Pay</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </section>
+                                        </div>
+                                    </td>
+                                    {%endif%}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-  {% endfor %}
-</div>
-{% endblock %}
 
-
-
-
-
-
-
-
+</main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js"></script>
+
+{% endblock %}
