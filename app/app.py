@@ -294,7 +294,11 @@ def edit_product():
     price = request.form.get('price')
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("UPDATE product SET description = %(description)s, price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "description": description, "price": price})
+            if description != "":
+                cur.execute("UPDATE product SET description = %(description)s WHERE sku = %(sku)s", {"sku": sku, "description": description})
+                
+            if price != "":
+                cur.execute("UPDATE product SET price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "price": price})
             
             log.debug(f"Deleted {cur.rowcount} rows.")
     
