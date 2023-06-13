@@ -148,6 +148,8 @@ def delete_customer():
 def suppliers():
     """Show the suppliers page."""
 
+    messages = get_flash_messages()
+
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
         cur.execute(
@@ -165,23 +167,36 @@ def suppliers():
     ):
         return jsonify(cur)
 
-    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur )
+    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur, messages=messages)
 
 # CREATE SUPPLIER
 @app.route('/create-supplier', methods=['POST'])
 def create_supplier():
+
     # Obtenha os dados do formulário enviado
     TIN = request.form.get('TIN')
     name = request.form.get('name')
     address = request.form.get('address')
-    # deve-se escolher um SKU de um produto existente (listamos os produtos a procurar por sku ou nome)
     SKU = request.form.get('SKU')
     date = request.form.get('date')
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("INSERT INTO supplier (TIN, name, address, SKU, date) VALUES (%(supp_no)s, %(name)s, %(address)s, %(SKU)s, %(date)s)", {"TIN": TIN, "name": name, "address": address, "SKU": SKU, "date": date})
-            log.debug(f"Inserted {cur.rowcount} rows.")
+            while True:
+                
+                cur.execute("SELECT TIN FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
+                if cur.fetchone() != None:
+                    flash("TIN already registed. Supplier not created.")
+                    break
+
+                cur.execute("SELECT SKU FROM product WHERE SKU = %(SKU)s", {"SKU": SKU})
+                if cur.fetchone() == None:
+                    flash("SKU does not exist. Supplier not created.")
+                    break
+
+                cur.execute("INSERT INTO supplier (TIN, name, address, SKU, date) VALUES (%(TIN)s, %(name)s, %(address)s, %(SKU)s, %(date)s)", {"TIN": TIN, "name": name, "address": address, "SKU": SKU, "date": date})
+                log.debug(f"Inserted {cur.rowcount} rows.")
+                break
 
     return redirect('/suppliers')
 
@@ -191,6 +206,7 @@ def delete_supplier():
     TIN = request.form['TIN']
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("DELETE FROM delivery WHERE TIN = %(TIN)s", {"TIN": TIN})
             cur.execute("DELETE FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
 
             log.debug(f"Deleted {cur.rowcount} rows.")
