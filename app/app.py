@@ -307,6 +307,7 @@ def get_products(start_index, end_index):
 @app.route('/create-product', methods=['POST'])
 def create_product():
     # Obtenha os dados do formulário enviado
+    sku = request.form.get('sku')
     name = request.form.get('name')
     description = request.form.get('description')
     price = request.form.get('price')
@@ -316,21 +317,18 @@ def create_product():
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
+            
+            cur.execute("SELECT sku FROM product WHERE sku = %(sku)s", {"sku": sku})
+            if cur.fetchone() != None:
+                flash("SKU already registered. Product not created.")
+                return redirect('/products')
+            
             cur.execute("SELECT ean FROM product WHERE ean = %(ean)s", {"ean": ean})
             if cur.fetchone() != None:
                 flash("EAN already registered. Product not created.")
                 return redirect(f'/products?page={page}&per_page={per_page}')
+            
 
-            
-            cur.execute("SELECT MAX(CAST(SUBSTRING(sku, 4) AS INT)) FROM product")
-            max_sku = cur.fetchone()[0]
-            
-            # If the table is empty, set max_sku to 0
-            if max_sku == None:
-                max_sku = 0
-            sku_n = max_sku + 1 
-                
-            sku = "SKU" + str(sku_n)
             cur.execute("INSERT INTO product (sku, name, description, price, ean) VALUES (%(sku)s, %(name)s, %(description)s, %(price)s, %(ean)s)", {"sku": sku, "name": name, "description": description, "price": price, "ean": ean})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
