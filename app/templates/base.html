@@ -30,14 +30,14 @@
             {% for page, label in pages.items() %}
               {% if (page == 'orders' or page == 'order') and 'customer' not in session %}
                 <!-- Não exibir o link "My Orders" se o cliente não estiver na sessão -->
-                {% elif current_page == page %}
-                  {% if page == 'customers' %}
+                {% elif request.endpoint == page %}
+                  {% if page != 'order' and page != 'homepage'  %}
                     <a href="{{ url_for(page, page=1, per_page=5) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">{{ label }}</a>
                   {% else %}
                     <a href="{{ url_for(page) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">{{ label }}</a>
                   {% endif %}
                 {% else %}
-                  {% if page == 'customers' %}
+                  {% if page != 'order' and page != 'homepage'  %}
                     <a href="{{ url_for(page, page=1, per_page=5) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label }}</a>
                   {% else %}
                     <a href="{{ url_for(page) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label }}</a>

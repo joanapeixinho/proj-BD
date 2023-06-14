@@ -77,11 +77,12 @@ def test():
 def homepage():
     """Show the index page."""
 
-    return render_template("homepage.html", current_page="homepage" , page_title="Homepage", session=session , cart_items=cart_items)
+    return render_template("homepage.html",  page_title="Homepage", session=session , cart_items=cart_items)
 
 # CUSTOMERS PAGE
 @app.route('/customers', methods=['GET'])
 def customers():
+    
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
 
@@ -96,15 +97,14 @@ def customers():
 
     customers = get_customers(start_index, end_index)
 
-    messages= get_flash_messages()
-    return render_template('customer/customers.html', customers=customers, total_customers=total_customers, per_page=per_page, current_page=page , page_title="Customers", session=session , cart_items=cart_items, messages=messages, total_pages=total_pages , prev_page=prev_page , next_page=next_page)
+    
+    return render_template('customer/customers.html', customers=customers, total_customers=total_customers, per_page=per_page, current_page=page , page_title="Customers", session=session , cart_items=cart_items, total_pages=total_pages , prev_page=prev_page , next_page=next_page)
 
 def get_total_customers():
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM customer")
             total_customers = cur.fetchone()[0]
-            flash(f"Total customers: {total_customers}")
     return total_customers
 
 
@@ -112,7 +112,6 @@ def get_customers(start_index, end_index):
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM customer LIMIT %s OFFSET %s", (end_index - start_index, start_index))
-            flash(f"Showing customers from {start_index} to {end_index}")
         
             customers = cur.fetchall()
             
@@ -126,6 +125,8 @@ def create_customer():
     email = request.form.get('email')
     phone = request.form.get('phone')
     address = request.form.get('address')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
@@ -140,12 +141,14 @@ def create_customer():
             cur.execute("INSERT INTO customer (cust_no, name, email, phone, address) VALUES (%(cust_no)s, %(name)s, %(email)s, %(phone)s, %(address)s)", {"cust_no": cust_no, "name": name, "email": email, "phone": phone, "address": address})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
-    return redirect('/customers')
+    return redirect(f'/customers?page={page}&per_page={per_page}')
 
 # DELETE CUSTOMER
 @app.route('/delete-customer', methods=['POST'])
 def delete_customer():
     cust_no = request.form['cust_no']
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
             cur.execute("DELETE FROM contains WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
@@ -156,32 +159,52 @@ def delete_customer():
 
             log.debug(f"Deleted {cur.rowcount} rows.")
     
-    return redirect('/customers')
+    return redirect(f'/customers?page={page}&per_page={per_page}')
 # SUPPLIERS PAGE
-@app.route("/suppliers", methods=("GET",))
+@app.route("/suppliers", methods=["GET"])
 def suppliers():
-    """Show the suppliers page."""
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
 
+    total_suppliers = get_total_suppliers()
+    total_pages = ceil(total_suppliers / per_page)
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
+
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+
+    suppliers = get_suppliers(start_index, end_index)
     messages = get_flash_messages()
 
+    return render_template(
+        "supplier/supplier.html",
+        suppliers=suppliers,
+        total_suppliers=total_suppliers,
+        per_page=per_page,
+        current_page=page,
+        page_title="Suppliers",
+        messages=messages,
+        session=session,
+        cart_items=cart_items,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )
+
+def get_total_suppliers():
     with pool.connection() as conn:
-        cur = conn.cursor(row_factory=namedtuple_row)
-        cur.execute(
-                """
-                SELECT * FROM supplier;
-                """,
-                {},
-            )
-        log.debug(f"Found {cur.rowcount} rows.")
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM supplier")
+            total_suppliers = cur.fetchone()[0]
+    return total_suppliers
 
-    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
-    if (
-        request.accept_mimetypes["application/json"]
-        and not request.accept_mimetypes["text/html"]
-    ):
-        return jsonify(cur)
-
-    return render_template("supplier/supplier.html", current_page="suppliers", page_title="Suppliers", suppliers=cur, messages=messages, session=session , cart_items=cart_items)
+def get_suppliers(start_index, end_index):
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM supplier LIMIT %s OFFSET %s", (end_index - start_index, start_index))
+            suppliers = cur.fetchall()
+    return suppliers
 
 
 @app.route('/create-supplier', methods=['POST'])
@@ -193,6 +216,8 @@ def create_supplier():
     address = request.form.get('address')
     SKU = request.form.get('SKU')
     date = request.form.get('date')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
@@ -212,13 +237,15 @@ def create_supplier():
                 log.debug(f"Inserted {cur.rowcount} rows.")
                 break
 
-    return redirect('/suppliers')
+    return redirect(f'/suppliers?page={page}&per_page={per_page}')
 
 
 # DELETE SUPPLIER
 @app.route('/delete-supplier', methods=['POST'])
 def delete_supplier():
     TIN = request.form['TIN']
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
             cur.execute("DELETE FROM delivery WHERE TIN = %(TIN)s", {"TIN": TIN})
@@ -226,31 +253,55 @@ def delete_supplier():
 
             log.debug(f"Deleted {cur.rowcount} rows.")
     
-    return redirect('/suppliers')
+    return redirect(f'/suppliers?page={page}&per_page={per_page}')
 
 # PRODUCTS PAGE
-@app.route("/products", methods=("GET",))
+@app.route("/products", methods=["GET"])
 def products():
-    """Show the products page."""
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
 
+    total_products = get_total_products()
+    total_pages = ceil(total_products / per_page)
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
+
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+
+    products = get_products(start_index, end_index)
+    messages = get_flash_messages()
+
+    return render_template(
+        "products/products.html",
+        products=products,
+        total_products=total_products,
+        per_page=per_page,
+        current_page=page,
+        page_title="Products",
+        messages=messages,
+        session=session,
+        cart_items=cart_items,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )
+
+def get_total_products():
     with pool.connection() as conn:
-        cur = conn.cursor(row_factory=namedtuple_row)
-        cur.execute(
-                """
-                SELECT * FROM product ORDER BY sku;
-                """,
-                {},
-            )
-        log.debug(f"Found {cur.rowcount} rows.")
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM product ")
+            total_products = cur.fetchone()[0]
+    return total_products
 
-    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
-    if (
-        request.accept_mimetypes["application/json"]
-        and not request.accept_mimetypes["text/html"]
-    ):
-        return jsonify(cur)
+def get_products(start_index, end_index):
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM product ORDER BY sku LIMIT %s OFFSET %s", (end_index - start_index, start_index))
+            products = cur.fetchall()
+    return products
 
-    return render_template("products/products.html", current_page="products", page_title="Products", products=cur , session=session , cart_items=cart_items )
 
 # CREATE PRODUCT
 @app.route('/create-product', methods=['POST'])
@@ -260,9 +311,17 @@ def create_product():
     description = request.form.get('description')
     price = request.form.get('price')
     ean = request.form.get('ean')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("SELECT ean FROM product WHERE ean = %(ean)s", {"ean": ean})
+            if cur.fetchone() != None:
+                flash("EAN already registered. Product not created.")
+                return redirect(f'/products?page={page}&per_page={per_page}')
+
+            
             cur.execute("SELECT MAX(CAST(SUBSTRING(sku, 4) AS INT)) FROM product")
             max_sku = cur.fetchone()[0]
             
@@ -275,12 +334,14 @@ def create_product():
             cur.execute("INSERT INTO product (sku, name, description, price, ean) VALUES (%(sku)s, %(name)s, %(description)s, %(price)s, %(ean)s)", {"sku": sku, "name": name, "description": description, "price": price, "ean": ean})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
-    return redirect('/products')
+    return redirect(f'/products?page={page}&per_page={per_page}')
 
 # DELETE PRODUCT
 @app.route('/delete-product', methods=['POST'])
 def delete_product():
     sku = request.form['sku']
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
             cur.execute("DELETE FROM contains WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
@@ -297,7 +358,7 @@ def delete_product():
             log.debug(f"Deleted {cur.rowcount} rows.")
     
     
-    return redirect('/products')
+    return redirect(f'/products?page={page}&per_page={per_page}')
 
 # EDIT PRODUCT
 @app.route('/edit-product', methods=['POST'])
@@ -306,6 +367,9 @@ def edit_product():
     sku = request.form['sku']
     description = request.form.get('description')
     price = request.form.get('price')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
+
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
             if description != "":
@@ -317,7 +381,7 @@ def edit_product():
             log.debug(f"Deleted {cur.rowcount} rows.")
     
     
-    return redirect('/products')
+    return redirect(f'/products?page={page}&per_page={per_page}')
 
 
 # ORDERS PAGE
@@ -348,44 +412,71 @@ def order():
     ):
         return jsonify(cur)
     
-    return render_template("orders/order.html", current_page="order", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages, session = session)
+    return render_template("orders/order.html", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages, session = session)
 
-@app.route("/orders", methods=("GET",))
+@app.route("/orders", methods=["GET"])
 def orders():
-    """Show all orders for customer"""
-    # Resto do código...
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+    cust_no = session["customer"][0]  # Obtém o número do cliente da sessão
 
-    # Get all orders for customer
+    total_orders = get_total_orders(cust_no)
+    total_pages = ceil(total_orders / per_page)
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
+
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+
+    orders = get_orders(cust_no, start_index, end_index)
+
+    return render_template(
+        "orders/orders.html",
+        page_title="Your Orders",
+        orders=orders,
+        total_orders=total_orders,
+        per_page=per_page,
+        current_page=page,
+        session=session,
+        cart_items=cart_items,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )
+
+
+def get_total_orders(cust_no):
     with pool.connection() as conn:
-        cur = conn.cursor(row_factory=namedtuple_row)
-        cur.execute(
-            """
-            SELECT * FROM orders WHERE cust_no = %(cust_no)s;
-            """,
-            {"cust_no": session['customer'][0]},
-        )
-        log.debug(f"Found {cur.rowcount} rows.")
-        orders = cur.fetchall()  # Recupera todos os resultados da consulta
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM orders WHERE cust_no = %(cust_no)s",
+                {"cust_no": cust_no},
+            )
+            total_orders = cur.fetchone()[0]
+    return total_orders
 
-    # Get all payed orders for customer
+
+def get_orders(cust_no, start_index, end_index):
     with pool.connection() as conn:
-        cur1 = conn.cursor(row_factory=namedtuple_row)
-        cur1.execute(
-            """
-            SELECT * FROM pay WHERE cust_no = %(cust_no)s;
-            """,
-            {"cust_no": session['customer'][0]},
-        )
-        log.debug(f"Found {cur1.rowcount} rows.")
-        payed_orders = cur1.fetchall()  # Recupera todos os resultados da consulta
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT * FROM orders
+                WHERE cust_no = %(cust_no)s
+                ORDER BY order_no DESC
+                LIMIT %(limit)s OFFSET %(offset)s
+                """,
+                {"cust_no": cust_no, "limit": end_index - start_index, "offset": start_index},
+            )
+            orders = cur.fetchall()
+    return orders
 
-    return render_template("orders/orders.html", current_page="orders", page_title="Your Orders", orders=orders, payed_orders= [order.order_no for order in payed_orders], session = session, cart_items=cart_items)
 
 @app.route("/cart", methods=("GET",))
 def cart():
     flash(session)
     message = get_flash_messages()
-    return render_template("orders/cart.html", current_page="cart", page_title="Your Cart", cart_items=cart_items, message=message , session=session)
+    return render_template("orders/cart.html", page_title="Your Cart", cart_items=cart_items, message=message , session=session)
 
 @app.route("/remove_from_cart",methods=['POST'])
 def remove_from_cart():
@@ -497,7 +588,7 @@ def login():
                     flash("Invalid email: " + email)
                     return redirect('/login')
     else:
-        return render_template('customer/login.html', current_page="login", page_title="login", message=message)
+        return render_template('customer/login.html', page_title="login", message=message)
 
 
 if __name__ == "__main__":

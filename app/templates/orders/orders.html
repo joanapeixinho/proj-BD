@@ -37,11 +37,11 @@
                             <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                                 {% for order in orders %}
                                 <tr>
-                                    <td class="py-4 px-6">{{ order['order_no'] }}</td>
-                                    <td class="py-4 px-6">{{ order['cust_no'] }}</td>
-                                    <td class="py-4 px-6">{{ order['date'] }}</td>
+                                    <td class="py-4 px-6">{{ order[0] }}</td>
+                                    <td class="py-4 px-6">{{ order[1] }}</td>
+                                    <td class="py-4 px-6">{{ order[2] }}</td>
                                     <td class="py-4 px-6">
-                                        {% if order['order_no'] in payed_orders %}
+                                        {% if order[0] in payed_orders %}
 
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                             Payed
@@ -52,21 +52,21 @@
                                         </span>
                                         {% endif %}
                                     </td>
-                                    {% if order['order_no'] not in payed_orders %}
+                                    {% if order[0] not in payed_orders %}
                                     <td class="py-4 px-6">
 
-                                        <button data-modal-target="#modal{{order['order_no']}}" data-modal-toggle="#modal{{order['order_no']}}"
+                                        <button data-modal-target="#modal{{order[0]}}" data-modal-toggle="#modal{{order[0]}}"
                                             class="px-3 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                             type="button">
                                             Pay
                                         </button>
-                                        <div id="#modal{{order['order_no']}}" tabindex="-1"
+                                        <div id="#modal{{order[0]}}" tabindex="-1"
                                             class="fixed top-0 left-0 right-0 z-50 hidden p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
                                             <section class="bg-white dark:bg-gray-900">
                                                 <div class="py-8 px-4 mx-auto max-w-2xl lg:py-16">
                                                     <form method="POST" action='/pay'>
-                                                        <input type="hidden" name="cust_no" value="{{order['cust_no']}}">
-                                                        <input type="hidden" name="order_no" value="{{order['order_no']}}">
+                                                        <input type="hidden" name="cust_no" value="{{order[1]}}">
+                                                        <input type="hidden" name="order_no" value="{{order[0]}}">
                                                         <h2 class="p-6 text-xl leading-8 text-gray-600">
                                                             Are you sure you want to pay this order?
                                                         </h2>
@@ -92,8 +92,53 @@
             </div>
         </div>
     </div>
-
 </main>
+
+
+<div class="mb-6 flex justify-center">
+    <ul class="inline-flex -space-x-px">
+      <!-- Link "Previous" -->
+      {% if prev_page %}
+        <li>
+          <a href="{{ url_for('orders', page=prev_page, per_page=per_page) }}" class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">Previous</a>
+        </li>
+      {% else %}
+        <li>
+          <a class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg opacity-50 cursor-not-allowed">Previous</a>
+        </li>
+      {% endif %}
+  
+      <!-- Page numbers -->
+      {% for num in range(1,total_pages+1) %}
+        {% if num %}
+          {% if num == current_page %}
+            <li>
+              <a href="#" aria-current="page" class="px-3 py-2 text-blue-600 border border-gray-300 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white">{{ num }}</a>
+            </li>
+          {% else %}
+            <li>
+              <a href="{{ url_for('orders', page=num, per_page=per_page) }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">{{ num }}</a>
+            </li>
+          {% endif %}
+        {% else %}
+          <li>
+            <span class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300">...</span>
+          </li>
+        {% endif %}
+      {% endfor %}
+  
+      <!-- Link "Next" -->
+      {% if next_page %}
+        <li>
+          <a href="{{ url_for('orders', page=next_page, per_page=per_page) }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">Next</a>
+        </li>
+      {% else %}
+        <li>
+          <a class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg opacity-50 cursor-not-allowed">Next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js"></script>
 
 {% endblock %}
