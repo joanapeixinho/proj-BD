@@ -211,3 +211,26 @@ INSERT INTO delivery (address, TIN) VALUES
 ('654 Pine St', 'TIN002'),
 ('876 Maple St', 'TIN003'),
 ('543 Birch St', 'TIN004');
+
+INSERT INTO product_photos (product_sku, photo_url)
+VALUES 
+    ('SKU001', 'static/images/product1.jpg'),
+    ('SKU002', 'static/images/product2.jpg'),
+    ('SKU003', 'static/images/product3.jpg'),
+    ('SKU004', 'static/images/product4.jpg'),
+    ('SKU005', 'static/images/product5.jpg'),
+    ('SKU006', 'static/images/product6.jpg'),
+    ('SKU007', 'static/images/product7.jpg'),
+    ('SKU008', 'static/images/product8.jpg'),
+    ('SKU009', 'static/images/product9.jpg'),
+    ('SKU010', 'static/images/product10.jpg'),
+    ('SKU011', 'static/images/product11.jpg'),
+    ('SKU012', 'static/images/product12.jpg'),
+    ('SKU013', 'static/images/product13.jpg'),
+    ('SKU014', 'static/images/product14.jpg'),
+    ('SKU015', 'static/images/product15.jpg'),
+    ('SKU016', 'static/images/product16.jpg'),
+    ('SKU017', 'static/images/product17.jpg'),
+    ('SKU018', 'static/images/product18.jpg'),
+    ('SKU019', 'static/images/product19.jpg'),
+    ('SKU020', 'static/images/product20.jpg');
