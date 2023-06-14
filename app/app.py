@@ -200,7 +200,7 @@ def create_supplier():
                 
                 cur.execute("SELECT TIN FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
                 if cur.fetchone() != None:
-                    flash("TIN already registed. Supplier not created.")
+                    flash("TIN already registered. Supplier not created.")
                     break
 
                 cur.execute("SELECT SKU FROM product WHERE SKU = %(SKU)s", {"SKU": SKU})
@@ -233,6 +233,7 @@ def delete_supplier():
 def products():
     """Show the products page."""
 
+
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
         cur.execute(
@@ -249,8 +250,8 @@ def products():
         and not request.accept_mimetypes["text/html"]
     ):
         return jsonify(cur)
-
-    return render_template("products/products.html", current_page="products", page_title="Products", products=cur , session=session , cart_items=cart_items )
+    messages = get_flash_messages()
+    return render_template("products/products.html", current_page="products", page_title="Products", messages=messages, products=cur , session=session , cart_items=cart_items )
 
 # CREATE PRODUCT
 @app.route('/create-product', methods=['POST'])
@@ -263,6 +264,13 @@ def create_product():
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
+            
+            cur.execute("SELECT ean FROM product WHERE ean = %(ean)s", {"ean": ean})
+            if cur.fetchone() != None:
+                flash("EAN already registered. Product not created.")
+                return redirect('/products')
+            
+            
             cur.execute("SELECT MAX(CAST(SUBSTRING(sku, 4) AS INT)) FROM product")
             max_sku = cur.fetchone()[0]
             
