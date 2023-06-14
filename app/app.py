@@ -225,7 +225,7 @@ def create_supplier():
                 
                 cur.execute("SELECT TIN FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
                 if cur.fetchone() != None:
-                    flash("TIN already registed. Supplier not created.")
+                    flash("TIN already registered. Supplier not created.")
                     break
 
                 cur.execute("SELECT SKU FROM product WHERE SKU = %(SKU)s", {"SKU": SKU})
