@@ -64,18 +64,10 @@ def get_flash_messages():
     return messages
 
 
-# testing templates
-@app.route("/test", methods=("GET",))
-def test():
-    """Show the index page."""
-
-    return render_template("test.html")
-
-
 # HOME PAGE
 @app.route("/", methods=("GET",))
 def homepage():
-    """Show the index page."""
+    """Show the homepage."""
 
     return render_template("homepage.html",  page_title="Homepage", session=session , cart_items=cart_items)
 
@@ -225,7 +217,7 @@ def create_supplier():
                 
                 cur.execute("SELECT TIN FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
                 if cur.fetchone() != None:
-                    flash("TIN already registered. Supplier not created.")
+                    flash("TIN already registed. Supplier not created.")
                     break
 
                 cur.execute("SELECT SKU FROM product WHERE SKU = %(SKU)s", {"SKU": SKU})
@@ -383,6 +375,13 @@ def edit_product():
     
     return redirect(f'/products?page={page}&per_page={per_page}')
 
+def get_product_photos():
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT product_sku, photo_url FROM product_photos")
+            rows = cur.fetchall()
+            photo_urls = {row[0]: row[1] for row in rows}
+    return photo_urls
 
 # ORDERS PAGE
 @app.route("/order", methods=("GET",))
@@ -394,6 +393,7 @@ def order():
         return redirect('/login')
 
     messages = get_flash_messages()  
+    photo_urls = get_product_photos()
     
     with pool.connection() as conn:
         cur = conn.cursor(row_factory=namedtuple_row)
@@ -402,7 +402,7 @@ def order():
                 SELECT * FROM product;
                 """,
                 {},
-            )
+            ) 
         log.debug(f"Found {cur.rowcount} rows.")
 
     # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
@@ -412,13 +412,14 @@ def order():
     ):
         return jsonify(cur)
     
-    return render_template("orders/order.html", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages, session = session)
+    return render_template("orders/order.html", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages, session = session, photo_urls=photo_urls)
 
 @app.route("/orders", methods=["GET"])
 def orders():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
-    cust_no = session["customer"][0]  # Obtém o número do cliente da sessão
+    cust_no = session["customer"][0] 
+    payed_orders = get_payed_orders()
 
     total_orders = get_total_orders(cust_no)
     total_pages = ceil(total_orders / per_page)
@@ -442,6 +443,7 @@ def orders():
         total_pages=total_pages,
         prev_page=prev_page,
         next_page=next_page,
+        payed_orders=[order.order_no for order in payed_orders],
     )
 
 
@@ -568,6 +570,14 @@ def pay():
             log.debug(f"Inserted {cur.rowcount} rows.")
 
     return redirect('/orders')
+
+def get_payed_orders():
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=namedtuple_row) as cur:
+            cur.execute("SELECT order_no FROM pay WHERE cust_no = %(cust_no)s", {"cust_no": session['customer'][0]})
+            log.debug(f"Found {cur.rowcount} rows.")
+            payed_orders = cur.fetchall()
+    return payed_orders 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
