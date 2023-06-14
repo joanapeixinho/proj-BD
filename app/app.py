@@ -3,6 +3,7 @@ from logging.config import dictConfig
 
 import psycopg
 import datetime
+from math import ceil
 from flask import flash
 from flask import Flask
 from flask import jsonify
@@ -10,7 +11,6 @@ from flask import redirect
 from flask import render_template
 from flask import request
 from flask import session
-from flask import url_for
 from urllib.request import urlopen
 from psycopg.rows import namedtuple_row
 from psycopg_pool import ConnectionPool
@@ -80,29 +80,43 @@ def homepage():
     return render_template("homepage.html", current_page="homepage" , page_title="Homepage", session=session , cart_items=cart_items)
 
 # CUSTOMERS PAGE
-@app.route("/customers", methods=("GET",))
+@app.route('/customers', methods=['GET'])
 def customers():
-    """Show all the accounts, most recent first."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
 
+    total_customers = get_total_customers()
+    total_pages = ceil(total_customers / per_page)
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
+
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+
+
+    customers = get_customers(start_index, end_index)
+
+    messages= get_flash_messages()
+    return render_template('customer/customers.html', customers=customers, total_customers=total_customers, per_page=per_page, current_page=page , page_title="Customers", session=session , cart_items=cart_items, messages=messages, total_pages=total_pages , prev_page=prev_page , next_page=next_page)
+
+def get_total_customers():
     with pool.connection() as conn:
-        cur = conn.cursor(row_factory=namedtuple_row)
-        cur.execute(
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM customer")
+            total_customers = cur.fetchone()[0]
+            flash(f"Total customers: {total_customers}")
+    return total_customers
 
-                """
-                SELECT * FROM customer;
-                """,
-                {},
-            )
-        log.debug(f"Found {cur.rowcount} rows.")
 
-    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
-    if (
-        request.accept_mimetypes["application/json"]
-        and not request.accept_mimetypes["text/html"]
-    ):
-        return jsonify(cur)
-
-    return render_template("customer/customers.html", customers=cur, current_page="customers", page_title="Customers", session=session , cart_items=cart_items)
+def get_customers(start_index, end_index):
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM customer LIMIT %s OFFSET %s", (end_index - start_index, start_index))
+            flash(f"Showing customers from {start_index} to {end_index}")
+        
+            customers = cur.fetchall()
+            
+    return customers
 
 # CREATE CUSTOMER
 @app.route('/create-customer', methods=['POST'])
@@ -304,6 +318,7 @@ def edit_product():
     
     
     return redirect('/products')
+
 
 # ORDERS PAGE
 @app.route("/order", methods=("GET",))
