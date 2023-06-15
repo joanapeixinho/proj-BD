@@ -6,14 +6,13 @@
 {% if messages %}
 
 {% endif %}
-
 <div class="flex flex-wrap justify-center mx-8">
   {% for product in products %}
   <div
     class="w-full max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 mx-4 my-4">
     <a href="#">
       <img class="p-8 rounded-t-lg w-full h-64 object-cover"
-        src="{{ photo_urls[product.sku] }}" alt="product image" />
+      src="{{ photo_urls[product.sku] }}" alt="product image" />
     </a>
     <div class="px-5 pb-5">
       <a href="#">

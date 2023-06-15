@@ -20,7 +20,7 @@
             <li class="flex items-center gap-4">
                 
               <img
-               src="{{ url_for('static', filename='images/products/product' + count|string + '.jpg') }}"
+               src="{{  photos[product['sku']]  }}"
                 alt=""
                 class="h-16 w-16 rounded object-contain "
               />
@@ -32,23 +32,17 @@
 
   
                   <div>
-                    <dt class="inline">Total price: </dt>
-                    <dd class="inline">{{product['price_for_qty']  | round(2) }} € </dd>
+                    <dt class="inline text-xs">Total price: </dt>
+                    <dd class="inline text-xs">{{product['price_for_qty']  | round(2) }} € </dd>
                   </div>
+                  <dd class="inline text-xs"> Quantity: {{product['quantity']}}  </dd>
                 </dl>
               </div>
   
               <div class="flex flex-1 items-center justify-end gap-2">
-                <form>
-                  <label for="Line1Qty" class="sr-only"> Quantity </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value="{{product['quantity']}}"
-                    id="Line1Qty"
-                    class="h-8 w-12 rounded border-gray-200 bg-gray-50 p-0 text-center text-xs text-gray-600 [-moz-appearance:_textfield] focus:outline-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                </form>
+                
+                  
+                
   
                 <form method="POST" action="/remove_from_cart">
                 <button class="text-gray-600 transition hover:text-red-600" type ="submit" >
@@ -83,7 +77,7 @@
   
                 <div class="flex justify-between !text-base font-medium">
                   <dt>Total: </dt>
-                  <dd> {{cart_items['total_price'] }} € </dd>
+                  <dd> {{cart_items['total_price'] | round(2)}} € </dd>
                 </div>
               </dl>
   

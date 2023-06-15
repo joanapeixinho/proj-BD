@@ -19,49 +19,69 @@
         <div class="hidden md:block">
           <div class="ml-10 flex items-baseline space-x-4">
             {% set pages = {
-              'homepage': 'Homepage',
-              'customers': 'Customers',
-              'products': 'Products',
-              'suppliers': 'Suppliers',
-              'order' : 'Place an Order',
-              'orders': 'My orders',
+            'homepage': 'Homepage',
+            'customers': 'Customers',
+            'products': 'Products',
+            'suppliers': 'Suppliers',
+            'order' : 'Place an Order',
+            'orders': 'My orders',
             } %}
-          
+
             {% for page, label in pages.items() %}
-              {% if (page == 'orders' or page == 'order') and 'customer' not in session %}
-                <!-- Não exibir o link "My Orders" se o cliente não estiver na sessão -->
-                {% elif request.endpoint == page %}
-                  {% if page != 'order' and page != 'homepage'  %}
-                    <a href="{{ url_for(page, page=1, per_page=5) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">{{ label }}</a>
-                  {% else %}
-                    <a href="{{ url_for(page) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">{{ label }}</a>
-                  {% endif %}
-                {% else %}
-                  {% if page != 'order' and page != 'homepage'  %}
-                    <a href="{{ url_for(page, page=1, per_page=5) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label }}</a>
-                  {% else %}
-                    <a href="{{ url_for(page) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label }}</a>
-                  {% endif %}
-              {% endif %}
+            {% if (page == 'orders' or page == 'order') and 'customer' not in session %}
+            <!-- Não exibir o link "My Orders" se o cliente não estiver na sessão -->
+            {% elif request.endpoint == page %}
+            {% if page != 'order' and page != 'homepage' %}
+            <a href="{{ url_for(page, page=1, per_page=5) }}"
+              class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">{{ label
+              }}</a>
+            {% else %}
+            <a href="{{ url_for(page) }}" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium"
+              aria-current="page">{{ label }}</a>
+            {% endif %}
+            {% else %}
+            {% if page != 'order' and page != 'homepage' %}
+            <a href="{{ url_for(page, page=1, per_page=5) }}"
+              class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label
+              }}</a>
+            {% else %}
+            <a href="{{ url_for(page) }}"
+              class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium">{{ label
+              }}</a>
+            {% endif %}
+            {% endif %}
             {% endfor %}
           </div>
         </div>
       </div>
 
       {% if 'customer' in session %}
-      <!-- shopping cart for order page-->
-      <div class="relative ml-3">
-        <a href="{{ url_for('cart') }}">
-
-          <img class="h-8 w-8 cursor-pointer" src="/static/images/shopping-cart.png" alt="Shopping Cart">
-          <div
-            class="absolute inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 border-2 border-white rounded-full -top-2 -right-2 dark:border-gray-900">
-            {{cart_items['total_items']}} </div>
-
-        </a>
+      <!-- log out button next to car-->
+      
+      <<div class="flex items-center">
+        <div class="relative ml-3">
+          <a href="{{ url_for('cart') }}">
+            <img class="h-8 w-8 cursor-pointer" src="/static/images/shopping-cart.png" alt="Shopping Cart">
+            <div class="absolute inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 border-2 border-white rounded-full -top-2 -right-2 dark:border-gray-900">
+              {{cart_items['total_items']}}
+            </div>
+          </a>
+        </div>
+        <div class="hidden md:block">
+          <div class="flex items-baseline ml-6">
+            <a href="{{ url_for('logout') }}" class="rounded-md bg-blue-900 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">Log Out</a>
+          </div>
+        </div>
       </div>
-      {% endif %}
+      {% else %}
+      <div class="hidden md:block">
+        <div class="flex items-baseline ml-6">
+          <a href="{{ url_for('login') }}" class="rounded-md bg-blue-900 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">Log In</a>
+        </div>
+      </div>
 
+        {% endif %}
+      </div>
     </div>
   </div>
 </nav>
@@ -69,7 +89,7 @@
 {% endif %}
 
 <section class="content">
-  {%if page_title!='login': %}
+  {%if request.endpoint != 'login' and request.endpoint !='homepage' %}
   {% block header %}
   <header class="bg-white shadow">
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

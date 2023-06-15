@@ -3,6 +3,7 @@ from logging.config import dictConfig
 
 import psycopg
 import datetime
+import os
 from math import ceil
 from flask import flash
 from flask import Flask
@@ -74,7 +75,8 @@ def homepage():
 # CUSTOMERS PAGE
 @app.route('/customers', methods=['GET'])
 def customers():
-    
+
+    messages = get_flash_messages()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
 
@@ -90,7 +92,7 @@ def customers():
     customers = get_customers(start_index, end_index)
 
     
-    return render_template('customer/customers.html', customers=customers, total_customers=total_customers, per_page=per_page, current_page=page , page_title="Customers", session=session , cart_items=cart_items, total_pages=total_pages , prev_page=prev_page , next_page=next_page)
+    return render_template('customer/customers.html', customers=customers, total_customers=total_customers, per_page=per_page, current_page=page , page_title="Customers", session=session , cart_items=cart_items, total_pages=total_pages , prev_page=prev_page , next_page=next_page, messages=messages)
 
 def get_total_customers():
     with pool.connection() as conn:
@@ -119,6 +121,17 @@ def create_customer():
     address = request.form.get('address')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 5, type=int)
+
+
+    #check if email already exists
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT email FROM customer WHERE email = %(email)s", {"email": email})
+            email_exists = cur.fetchone()
+            if email_exists:
+                flash('Email already exists, please try again with a different email.')
+                return redirect(f'/customers?page={page}&per_page={per_page}')
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
@@ -251,7 +264,7 @@ def delete_supplier():
 @app.route("/products", methods=["GET"])
 def products():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
 
     total_products = get_total_products()
     total_pages = ceil(total_products / per_page)
@@ -304,6 +317,7 @@ def create_product():
     description = request.form.get('description')
     price = request.form.get('price')
     ean = request.form.get('ean')
+    photo = request.files.get('photo')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 5, type=int)
 
@@ -313,7 +327,7 @@ def create_product():
             cur.execute("SELECT sku FROM product WHERE sku = %(sku)s", {"sku": sku})
             if cur.fetchone() != None:
                 flash("SKU already registered. Product not created.")
-                return redirect('/products')
+                return redirect(f'/products?page={page}&per_page={per_page}')
             
             cur.execute("SELECT ean FROM product WHERE ean = %(ean)s", {"ean": ean})
             if cur.fetchone() != None:
@@ -324,8 +338,24 @@ def create_product():
             cur.execute("INSERT INTO product (sku, name, description, price, ean) VALUES (%(sku)s, %(name)s, %(description)s, %(price)s, %(ean)s)", {"sku": sku, "name": name, "description": description, "price": price, "ean": ean})
             log.debug(f"Inserted {cur.rowcount} rows.")
 
+    if photo:
+      
+        photo_path = os.path.join('static/images/products', photo.filename)
+        photo.save(photo_path)
+
+    if photo:
+        photo_url = "static/images/products/" + photo.filename
+        with pool.connection() as conn:
+            with conn.cursor(row_factory=namedtuple_row) as cur:
+                cur.execute("INSERT INTO product_photos (product_sku, photo_url) VALUES (%s, %s)",
+                            (sku, photo_url))
+                conn.commit()
+                log.debug(f"Inserted {cur.rowcount} rows.")   
+
     return redirect(f'/products?page={page}&per_page={per_page}')
 
+
+    
 # DELETE PRODUCT
 @app.route('/delete-product', methods=['POST'])
 def delete_product():
@@ -342,9 +372,12 @@ def delete_product():
             cur.execute("DELETE FROM orders WHERE order_no NOT IN (SELECT order_no FROM contains)")
             
             cur.execute("UPDATE supplier SET sku = NULL WHERE sku = %(sku)s", {"sku": sku})
-            cur.execute("DELETE FROM product WHERE sku = %(sku)s", {"sku": sku})
-            
+            #delete product photos
+            cur.execute("DELETE FROM product_photos WHERE product_sku = %(sku)s", {"sku": sku})
 
+            cur.execute("DELETE FROM product WHERE sku = %(sku)s", {"sku": sku})
+            conn.commit()
+            
             log.debug(f"Deleted {cur.rowcount} rows.")
     
     
@@ -387,7 +420,7 @@ def order():
     """Show the index page."""
     # Check if the user is logged in
     if 'customer' not in session:
-        flash("You need to log in to checkout")
+        flash("You need to log in to access this page.")
         return redirect('/login')
 
     messages = get_flash_messages()  
@@ -415,7 +448,7 @@ def order():
 @app.route("/orders", methods=["GET"])
 def orders():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
     cust_no = session["customer"][0] 
     payed_orders = get_payed_orders()
 
@@ -474,9 +507,9 @@ def get_orders(cust_no, start_index, end_index):
 
 @app.route("/cart", methods=("GET",))
 def cart():
-    flash(session)
     message = get_flash_messages()
-    return render_template("orders/cart.html", page_title="Your Cart", cart_items=cart_items, message=message , session=session)
+    photos = get_product_photos()
+    return render_template("orders/cart.html", page_title="Your Cart", cart_items=cart_items, message=message , session=session, photos=photos)
 
 @app.route("/remove_from_cart",methods=['POST'])
 def remove_from_cart():
@@ -525,49 +558,68 @@ def add_to_cart():
 
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
-    
     # Check if the user is logged in
     if 'customer' not in session:
         flash("You need to log in to checkout")
         return redirect('/login')
     
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
 
     current_date = datetime.date.today()  # Obtém a data atual
 
-    # Create a new order
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("SELECT MAX(order_no) FROM orders")
-            max_order_no = cur.fetchone()[0]
-            order_no = max_order_no + 1 if max_order_no != None else 1
-            cur.execute("INSERT INTO orders (order_no, cust_no, date) VALUES (%(order_no)s, %(cust_no)s, %(date)s)", {"order_no": order_no, "cust_no": session['customer'][0], "date": current_date})
-            log.debug(f"Inserted {cur.rowcount} rows.")
-    
-    # Add the products to the order
-    for item in cart_items['items']:
-        with pool.connection() as conn:
-            with conn.cursor(row_factory=namedtuple_row) as cur:
-                cur.execute("INSERT INTO contains (order_no, SKU, QTY) VALUES (%(order_no)s, %(SKU)s, %(QTY)s)", {"order_no": order_no, "SKU": item['sku'], "QTY": item['quantity']})
-                log.debug(f"Inserted {cur.rowcount} rows.")
+            try:
+                # Iniciar a transação
+                cur.execute("START TRANSACTION")
 
-    # Clear the cart
-    cart_items['items'] = []
-    cart_items['total_price'] = 0
-    cart_items['total_items'] = 0
+                # Obter o número máximo de pedido
+                cur.execute("SELECT MAX(order_no) FROM orders")
+                max_order_no = cur.fetchone()[0]
+                order_no = max_order_no + 1 if max_order_no is not None else 1
 
-    return redirect('/orders')
+                # Inserir pedido (tabela orders)
+                cur.execute("INSERT INTO orders (order_no, cust_no, date) VALUES (%(order_no)s, %(cust_no)s, %(date)s)", {"order_no": order_no, "cust_no": session['customer'][0], "date": current_date})
+                log.debug(f"Inserted {cur.rowcount} rows in orders table.")
+
+                # Inserir produtos no pedido (tabela contains)
+                for item in cart_items['items']:
+                    cur.execute("INSERT INTO contains (order_no, SKU, QTY) VALUES (%(order_no)s, %(SKU)s, %(QTY)s)", {"order_no": order_no, "SKU": item['sku'], "QTY": item['quantity']})
+                    log.debug(f"Inserted {cur.rowcount} rows in contains table.")
+
+                # Confirmar a transação
+                cur.execute("COMMIT")
+
+
+            except Exception as e:
+                # Reverter a transação em caso de erro
+                cur.execute("ROLLBACK")
+                log.error(f"Error during checkout: {str(e)}")
+                flash("An error occurred during checkout. Please try again.")
+                return redirect('/cart')
+
+            # Limpar o carrinho
+            cart_items['items'] = []
+            cart_items['total_price'] = 0
+            cart_items['total_items'] = 0
+
+            return redirect(f"/orders?page={page}&per_page={per_page}")
+
 
 @app.route('/pay', methods=['GET', 'POST'])
 def pay():
     order_no = request.form.get('order_no')
     cust_no = request.form.get('cust_no')
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
             cur.execute("INSERT INTO pay (order_no, cust_no) VALUES (%(order_no)s, %(cust_no)s)", {"order_no": order_no, "cust_no": cust_no}) 
             log.debug(f"Inserted {cur.rowcount} rows.")
 
-    return redirect('/orders')
+    return redirect(f"/orders?page={page}&per_page={per_page}")
 
 def get_payed_orders():
     with pool.connection() as conn:
@@ -597,6 +649,12 @@ def login():
                     return redirect('/login')
     else:
         return render_template('customer/login.html', page_title="login", message=message)
+    
+
+@app.route('/logout')
+def logout():
+    session.pop('customer', None)
+    return redirect('/')
 
 
 if __name__ == "__main__":
