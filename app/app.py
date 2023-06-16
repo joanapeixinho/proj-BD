@@ -156,13 +156,26 @@ def delete_customer():
     per_page = request.args.get('per_page', 5, type=int)
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("DELETE FROM contains WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
-            cur.execute("DELETE FROM pay WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
-            cur.execute("DELETE FROM process WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
-            cur.execute("DELETE FROM orders WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
-            cur.execute("DELETE FROM customer WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
+            try:
+                # Iniciar a transação
+                cur.execute("START TRANSACTION")
 
-            log.debug(f"Deleted {cur.rowcount} rows.")
+                cur.execute("DELETE FROM contains WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
+                cur.execute("DELETE FROM pay WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
+                cur.execute("DELETE FROM process WHERE order_no IN (SELECT order_no FROM orders WHERE cust_no = %(cust_no)s)", {"cust_no": cust_no})
+                cur.execute("DELETE FROM orders WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
+                cur.execute("DELETE FROM customer WHERE cust_no = %(cust_no)s", {"cust_no": cust_no})
+
+                log.debug(f"Deleted {cur.rowcount} rows.")
+                # Confirmar a transação
+                cur.execute("COMMIT")
+            except Exception as e:
+                # Reverter a transação em caso de erro
+                cur.execute("ROLLBACK")
+                log.error(f"Error while deleting customer: {str(e)}")
+                flash("An error occurred deleting customer. Please try again.")
+                return redirect(f'/customers?page={page}&per_page={per_page}')
+                
     
     return redirect(f'/customers?page={page}&per_page={per_page}')
 # SUPPLIERS PAGE
@@ -253,8 +266,23 @@ def delete_supplier():
     per_page = request.args.get('per_page', 5, type=int)
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("DELETE FROM delivery WHERE TIN = %(TIN)s", {"TIN": TIN})
-            cur.execute("DELETE FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
+            try:
+                # Iniciar a transação
+                cur.execute("START TRANSACTION")
+
+                cur.execute("DELETE FROM delivery WHERE TIN = %(TIN)s", {"TIN": TIN})
+                cur.execute("DELETE FROM supplier WHERE TIN = %(TIN)s", {"TIN": TIN})
+
+                log.debug(f"Deleted {cur.rowcount} rows.")
+                # Confirmar a transação
+                cur.execute("COMMIT")
+            except Exception as e:
+                # Reverter a transação em caso de erro
+                cur.execute("ROLLBACK")
+                log.error(f"Error while deleting supplier: {str(e)}")
+                flash("An error occurred deleting supplier. Please try again.")
+                return redirect(f'/suppliers?page={page}&per_page={per_page}')
+
 
             log.debug(f"Deleted {cur.rowcount} rows.")
     
@@ -364,22 +392,35 @@ def delete_product():
     per_page = request.args.get('per_page', 5, type=int)
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            cur.execute("DELETE FROM contains WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
-            
-            # In case we are deleting the last product in an order, we need to delete the orders, pay and process tables
-            cur.execute("DELETE FROM process WHERE order_no NOT IN (SELECT order_no FROM contains)")
-            cur.execute("DELETE FROM pay WHERE order_no NOT IN (SELECT order_no FROM contains)")
-            cur.execute("DELETE FROM orders WHERE order_no NOT IN (SELECT order_no FROM contains)")
-            
-            cur.execute("UPDATE supplier SET sku = NULL WHERE sku = %(sku)s", {"sku": sku})
-            #delete product photos
-            cur.execute("DELETE FROM product_photos WHERE product_sku = %(sku)s", {"sku": sku})
+            try:
+                # Iniciar a transação
+                cur.execute("START TRANSACTION")
 
-            cur.execute("DELETE FROM product WHERE sku = %(sku)s", {"sku": sku})
-            conn.commit()
+                cur.execute("DELETE FROM contains WHERE sku IN (SELECT sku FROM product WHERE sku = %(sku)s)", {"sku": sku})
             
-            log.debug(f"Deleted {cur.rowcount} rows.")
-    
+                # In case we are deleting the last product in an order, we need to delete the orders, pay and process tables
+                cur.execute("DELETE FROM process WHERE order_no NOT IN (SELECT order_no FROM contains)")
+                cur.execute("DELETE FROM pay WHERE order_no NOT IN (SELECT order_no FROM contains)")
+                cur.execute("DELETE FROM orders WHERE order_no NOT IN (SELECT order_no FROM contains)")
+                
+                cur.execute("UPDATE supplier SET sku = NULL WHERE sku = %(sku)s", {"sku": sku})
+                #delete product photos
+                cur.execute("DELETE FROM product_photos WHERE product_sku = %(sku)s", {"sku": sku})
+
+                cur.execute("DELETE FROM product WHERE sku = %(sku)s", {"sku": sku})
+                
+
+                log.debug(f"Deleted {cur.rowcount} rows.")
+                # Confirmar a transação
+                cur.execute("COMMIT")
+            except Exception as e:
+                # Reverter a transação em caso de erro
+                cur.execute("ROLLBACK")
+                log.error(f"Error while deleting product: {str(e)}")
+                flash("An error occurred deleting product. Please try again.")
+                return redirect(f'/products?page={page}&per_page={per_page}')
+            
+            
     
     return redirect(f'/products?page={page}&per_page={per_page}')
 
@@ -395,14 +436,28 @@ def edit_product():
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=namedtuple_row) as cur:
-            if description != "":
-                cur.execute("UPDATE product SET description = %(description)s WHERE sku = %(sku)s", {"sku": sku, "description": description})
+            try:
+                # Iniciar a transação
+                cur.execute("START TRANSACTION")
+
+                if description != "":
+                    cur.execute("UPDATE product SET description = %(description)s WHERE sku = %(sku)s", {"sku": sku, "description": description})
                 
-            if price != "":
-                cur.execute("UPDATE product SET price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "price": price})
-            
-            log.debug(f"Deleted {cur.rowcount} rows.")
+                if price != "":
+                    cur.execute("UPDATE product SET price = %(price)s WHERE sku = %(sku)s", {"sku": sku, "price": price})
+                
+                log.debug(f"Deleted {cur.rowcount} rows.")
     
+                # Confirmar a transação
+                cur.execute("COMMIT")
+            except Exception as e:
+                # Reverter a transação em caso de erro
+                cur.execute("ROLLBACK")
+                log.error(f"Error while editing product: {str(e)}")
+                flash("An error occurred editing prodyct. Please try again.")
+                return redirect(f'/products?page={page}&per_page={per_page}')
+            
+            
     
     return redirect(f'/products?page={page}&per_page={per_page}')
 
