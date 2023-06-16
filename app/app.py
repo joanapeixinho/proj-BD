@@ -469,36 +469,35 @@ def get_product_photos():
             photo_urls = {row[0]: row[1] for row in rows}
     return photo_urls
 
-# ORDERS PAGE
 @app.route("/order", methods=("GET",))
 def order():
-    """Show the index page."""
+
     # Check if the user is logged in
     if 'customer' not in session:
         flash("You need to log in to access this page.")
         return redirect('/login')
+    
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
+
+    total_products = get_total_products()
+    total_pages = ceil(total_products / per_page)
+    prev_page = page - 1 if page > 1 else None
+    next_page = page + 1 if page < total_pages else None
+
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+
+    products = get_products(start_index, end_index)
+
 
     messages = get_flash_messages()  
     photo_urls = get_product_photos()
     
-    with pool.connection() as conn:
-        cur = conn.cursor(row_factory=namedtuple_row)
-        cur.execute(
-                """
-                SELECT * FROM product;
-                """,
-                {},
-            ) 
-        log.debug(f"Found {cur.rowcount} rows.")
+    return render_template("orders/order.html", page_title="Available for Order", products=products, cart_items=cart_items, messages=messages, session = session, photo_urls=photo_urls, total_products=total_products, page=page, per_page=per_page, prev_page=prev_page, next_page=next_page, total_pages=total_pages)
 
-    # API-like response is returned to clients that request JSON explicitly (e.g., fetch)
-    if (
-        request.accept_mimetypes["application/json"]
-        and not request.accept_mimetypes["text/html"]
-    ):
-        return jsonify(cur)
-    
-    return render_template("orders/order.html", page_title="Available for Order", products=cur, cart_items=cart_items, messages=messages, session = session, photo_urls=photo_urls)
+
+
 
 @app.route("/orders", methods=["GET"])
 def orders():
@@ -508,6 +507,7 @@ def orders():
     payed_orders = get_payed_orders()
 
     total_orders = get_total_orders(cust_no)
+
     total_pages = ceil(total_orders / per_page)
     prev_page = page - 1 if page > 1 else None
     next_page = page + 1 if page < total_pages else None
@@ -593,6 +593,8 @@ def add_to_cart():
     quantity = int(request.form.get('quantity'))
     price = float(request.form.get('price')) * quantity
 
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
     
     for item in cart_items['items']:
         # Update existing product quantity and price for it
@@ -609,7 +611,7 @@ def add_to_cart():
 
     flash("added" + str(quantity) +  "items to cart sucessfully")
 
-    return redirect('/order') 
+    return redirect('/order?page=' + str(page) + '&per_page=' + str(per_page))
 
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
@@ -709,6 +711,10 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('customer', None)
+    #empty cart
+    cart_items['items'] = []
+    cart_items['total_price'] = 0
+    cart_items['total_items'] = 0
     return redirect('/')
 
 
